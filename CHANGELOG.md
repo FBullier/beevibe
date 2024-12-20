@@ -1,4 +1,4 @@
-# 🐝 BeeVibe Changelog
+# 🐝 Beevibe Changelog
 
 ## v0.1 - Initial Release
 **Release Date:** December 2024
