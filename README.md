@@ -1,13 +1,13 @@
-# 🐝 BeeVibe
+# 🐝 Beevibe
 
 ### **Feel the vibe of building smarter models.**
 
 ---
 
-## 🐝 **About BeeVibe**
-BeeVibe is a Python package designed to make it easier to train advanced language models, like CamemBERT, on text datasets with specific themes and perform accurate inference on new sentences. Inspired by the intelligence and collaboration of bees, BeeVibe is built to empower developers and researchers with tools that are efficient, intuitive, and scalable.
+## 🐝 **About Beevibe**
+Beevibe is a Python package designed to make it easier to train advanced language models, like CamemBERT, on text datasets with specific themes and perform accurate inference on new sentences. Inspired by the intelligence and collaboration of bees, Beevibe is built to empower developers and researchers with tools that are efficient, intuitive, and scalable.
 
-BeeVibe leverages modern AI features to simplify workflows and enhance user experience. It integrates:
+Beevibe leverages modern AI features to simplify workflows and enhance user experience. It integrates:
 - OpenAI and Ollama interfaces for intelligent interaction.
 - AI-assisted research, documentation, and result analysis.
 - Automatic dataset summarization.
@@ -35,10 +35,10 @@ BeeVibe leverages modern AI features to simplify workflows and enhance user expe
 
 ## 📦 **Installation**
 
-Install BeeVibe using pip:
+Install Beevibe using pip:
 
 ```bash
-pip install beevibe
+pip install Beevibe
 ```
 
 ---
@@ -49,7 +49,7 @@ pip install beevibe
 Train CamemBERT on your custom thematic dataset:
 
 ```python
-from beevibe import ModelTrainer
+from Beevibe import ModelTrainer
 
 # Initialize the trainer
 trainer = ModelTrainer(model="camembert-base", dataset="path/to/dataset.csv")
@@ -65,7 +65,7 @@ trainer.save("trained_model")
 Use the trained model to classify or extract themes from new sentences:
 
 ```python
-from beevibe import ModelInference
+from Beevibe import ModelInference
 
 # Load the trained model
 inference = ModelInference("trained_model")
@@ -80,7 +80,7 @@ print("Predicted Theme:", result)
 
 ## 📚 **Documentation**
 
-Comprehensive documentation is available [here](https://github.com/fbullier/beevibe/wiki) with detailed guides, API references, and examples.
+Comprehensive documentation is available [here](https://github.com/fbullier/Beevibe/wiki) with detailed guides, API references, and examples.
 
 ---
 
@@ -97,12 +97,12 @@ We welcome contributions! To contribute:
 
 ## 📜 **License**
 
-BeeVibe is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+Beevibe is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ### **Copyright Notice**
 
 ```
-Copyright (c) 2024 BeeVibe Authors
+Copyright (c) 2024 Beevibe Authors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -125,21 +125,21 @@ SOFTWARE.
 
 ---
 
-## 📖 **Citing BeeVibe**
+## 📖 **Citing Beevibe**
 
-If you use BeeVibe in your research, projects, or publications, please cite it as follows:
+If you use Beevibe in your research, projects, or publications, please cite it as follows:
 
 ```
-@misc{beevibe2024,
-  title={BeeVibe: Feel the vibe of building smarter models},
-  author={The BeeVibe Team},
+@misc{Beevibe2024,
+  title={Beevibe: Feel the vibe of building smarter models},
+  author={The Beevibe Team},
   year={2024},
-  url={https://github.com/fbullier/beevibe},
+  url={https://github.com/fbullier/Beevibe},
   note={Version 0.1}
 }
 ```
 
-By citing BeeVibe, you help others discover and build upon this work!
+By citing Beevibe, you help others discover and build upon this work!
 
 ---
 
@@ -150,4 +150,4 @@ By citing BeeVibe, you help others discover and build upon this work!
 
 ---
 
-![BeeVibe Logo](logo.png)
+![Beevibe Logo](logo.png)
