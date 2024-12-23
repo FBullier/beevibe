@@ -1,19 +1,11 @@
-# Standard libraries
 pandas>=2.2.2
 numpy>=1.26.4
 scipy>=1.13.1
 scikit-learn>=1.6.0
 torch>=2.5.1
-
-# Core dependencies
-transformers>=4.47.0          # For pretrained language models
-tokenizers>=0.21.0            # For pretrained language models
-sentencepiece>=0.2.0          # For pretrained language models
-datasets>=3.2.0               # For dataset management
-
-# Visualization and utility libraries
-seaborn>=0.11.0               # For data visualization
-matplotlib>=3.3.0             # For plotting
-
-# Optional dependency for Pydantic (if using in config.py)
+transformers[sentencepiece]>=4.47.0,<5.0.0
+tokenizers>=0.21.0
+datasets>=3.2.0
+seaborn>=0.11.0
+matplotlib>=3.3.0
 pydantic>=1.10.0
