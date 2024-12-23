@@ -8,6 +8,7 @@ torch>=2.5.1
 # Core dependencies
 transformers>=4.47.0          # For pretrained language models
 tokenizers>=0.21.0            # For pretrained language models
+sentencepiece>=0.2.0          # For pretrained language models
 datasets>=3.2.0               # For dataset management
 
 # Visualization and utility libraries

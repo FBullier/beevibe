@@ -2,7 +2,7 @@ import random
 import pandas as pd
 import numpy as np
 import logging
-import time
+import time, gc
 
 import torch
 import torch.nn as nn
@@ -391,7 +391,7 @@ class MultiClassTrainer:
 
         else:
             # For multi-class: Compute standard metrics
-            prfs = precision_recall_fscore_support(y_true, y_pred, average=None)
+            prfs = precision_recall_fscore_support(y_true, y_pred, average=None, zero_division=0)
             res["class_precision"] = prfs[0]
             res["class_recall"] = prfs[1]
             res["class_f1"] = prfs[2]
@@ -873,3 +873,13 @@ class MultiClassTrainer:
         self.__print_metrics({"val_metrics": ret})
 
         return rets
+
+    def release_model(
+        self
+    ):
+        self.model = None
+        gc.collect()
+        if self.device.startswith("cuda"):
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()            
+
