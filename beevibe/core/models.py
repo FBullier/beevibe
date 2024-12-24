@@ -1,11 +1,48 @@
 import torch.nn as nn
-from transformers import AutoModel
+from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 import transformers
 
+from huggingface_hub.utils import disable_progress_bars as hfhub_disable_progress_bar
+hfhub_disable_progress_bar()
 
-class CustomModel(nn.Module):
+
+class HFTokenizer():
+    def __init__(self):
+        super(HFTokenizer, self).__init__()
+
+    def from_pretrained(self, model_name, clean_up_tokenization_spaces=None):
+
+        if clean_up_tokenization_spaces is None:
+            return AutoTokenizer.from_pretrained(
+                pretrained_model_name_or_path=model_name
+            )
+        else:
+            return AutoTokenizer.from_pretrained(
+                pretrained_model_name_or_path=model_name, 
+                clean_up_tokenization_spaces=clean_up_tokenization_spaces,
+            )            
+
+
+class HFModelForClassification():
+    def __init__(self):
+        super(HFModelForClassification, self).__init__()
+
+    def from_pretrained(self, model_name, num_labels=None):
+
+        if num_labels is None:
+            return AutoModelForSequenceClassification.from_pretrained(
+                pretrained_model_name_or_path=model_name,
+            )
+        else:
+            return AutoModelForSequenceClassification.from_pretrained(
+                pretrained_model_name_or_path=model_name,
+                num_labels=num_labels
+            )
+
+
+class SimpleModel(nn.Module):
     def __init__(self, model_name, num_labels):
-        super(CustomModel, self).__init__()
+        super(SimpleModel, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
         self.base_model = AutoModel.from_pretrained(self.model_name)
@@ -24,9 +61,9 @@ class CustomModel(nn.Module):
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
 
 
-class CustomModelParams(nn.Module):
+class CustomModel(nn.Module):
     def __init__(self, model_name, num_labels, layer_configs):
-        super(CustomModelParams, self).__init__()
+        super(CustomModel, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
         self.base_model = AutoModel.from_pretrained(self.model_name)
@@ -81,7 +118,7 @@ class CustomModelParams(nn.Module):
         outputs = self.base_model(input_ids, attention_mask=attention_mask)
         embeddings = outputs[0][
             :, 0
-        ]  # CLS token representation (shape: [batch_size, 768])
+        ]  # CLS token representation (shape: [batch_size, 768] for Camembert)
 
         # Pass embeddings through custom stack
         logits = self.linear_relu_stack(embeddings)

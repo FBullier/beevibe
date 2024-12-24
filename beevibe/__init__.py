@@ -9,8 +9,10 @@ from .core.trainer import EarlyStopping
 from .core.trainer import MultiClassTrainer
 from .core.datasets import TextDatasetMC
 from .core.datasets import TextDatasetML
+from .core.models import HFTokenizer
+from .core.models import HFModelForClassification
+from .core.models import SimpleModel
 from .core.models import CustomModel
-from .core.models import CustomModelParams
 from .core.schedulers import AnnealOnPlateau
 
 #from .ai.openai_interface import OpenAIInterface
@@ -26,7 +28,9 @@ __all__ = [
     "MultiClassTrainer",
     "TextDatasetMC",
     "TextDatasetML",
+    "HFTokenizer",
+    "HFModelForClassification",
+    "SimpleModel",
     "CustomModel",
-    "CustomModelParams",
     "AnnealOnPlateau",
 ]

@@ -19,15 +19,13 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from transformers import logging as hf_logging
-from transformers import AutoTokenizer
-
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from beevibe.core.datasets import TextDatasetML
-from beevibe.core.datasets import TextDatasetMC
+from transformers import logging as hf_logging
+
+from beevibe.core.datasets import TextDatasetML, TextDatasetMC
+from beevibe.core.models import HFTokenizer, HFModelForClassification
 
 
 class EarlyStopping:
@@ -115,7 +113,7 @@ class MultiClassTrainer:
             self.logger.info(message)
 
     def default_model_creator(self, model_name, num_classes):
-        return AutoModelForSequenceClassification.from_pretrained(
+        return HFModelForClassification().from_pretrained(
             model_name, num_labels=num_classes
         )
 
@@ -169,7 +167,7 @@ class MultiClassTrainer:
             self.scheduler = None
 
     def __init_logger(self):
-        logger = logging.getLogger("CamemBERTLogger")
+        logger = logging.getLogger("BeevibeLogger")
         logger.setLevel(logging.INFO)
 
         logger.propagate = False
@@ -188,7 +186,7 @@ class MultiClassTrainer:
         return logger
 
     def __init_tokenizer(self):
-        self.tokenizer = AutoTokenizer.from_pretrained(
+        self.tokenizer = HFTokenizer().from_pretrained(
             self.model_name, clean_up_tokenization_spaces=True
         )
 
@@ -664,8 +662,8 @@ class MultiClassTrainer:
         self.tokenizer.save_pretrained(path)
 
     def load(self, path):
-        self.tokenizer = AutoTokenizer.from_pretrained(path)
-        self.model = AutoModelForSequenceClassification.from_pretrained(path)
+        self.tokenizer = HFTokenizer().from_pretrained(path)
+        self.model = HFModelForClassification().from_pretrained(path)
 
     def __preprocess(self, raw_reviews, max_len=128):
         encoded_batch = self.tokenizer(
