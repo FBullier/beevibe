@@ -19,7 +19,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 
-from transformers import CamembertTokenizer, CamembertForSequenceClassification
+from transformers import AutoTokenizer, CamembertTokenizer, CamembertForSequenceClassification
 from transformers import logging as hf_logging
 from transformers import AutoTokenizer
 
@@ -115,6 +115,7 @@ class MultiClassTrainer:
             self.logger.info(message)
 
     def default_model_creator(self, model_name, num_classes):
+        #return CamembertForSequenceClassification.from_pretrained(
         return CamembertForSequenceClassification.from_pretrained(
             model_name, num_labels=num_classes
         )
@@ -188,7 +189,8 @@ class MultiClassTrainer:
         return logger
 
     def __init_tokenizer(self):
-        self.tokenizer = CamembertTokenizer.from_pretrained(
+        #self.tokenizer = CamembertTokenizer.from_pretrained(
+        self.tokenizer = AutoTokenizer.from_pretrained(
             self.model_name, clean_up_tokenization_spaces=True
         )
 
