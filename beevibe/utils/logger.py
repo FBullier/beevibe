@@ -4,6 +4,7 @@ from transformers import logging as hf_logging
 
 def setup_logger(name: str = "BeevibeLogger", log_file: str = "beevibe.log", level: int = logging.INFO) -> logging.Logger:
     """
+       
     Configures and returns a logger instance.
 
     Args:
