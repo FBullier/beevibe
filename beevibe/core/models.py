@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 import transformers
@@ -33,9 +34,9 @@ class HFTokenizer:
             )
         else:
             return AutoTokenizer.from_pretrained(
-                pretrained_model_name_or_path=model_name, 
+                pretrained_model_name_or_path=model_name,
                 clean_up_tokenization_spaces=clean_up_tokenization_spaces,
-            )            
+            )
 
 class HFModelForClassification:
     """

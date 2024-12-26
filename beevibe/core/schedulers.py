@@ -1,3 +1,5 @@
+import torch
+
 class AnnealOnPlateau:
     """
     Implements a learning rate scheduler that reduces the learning rate when a metric has stopped improving.

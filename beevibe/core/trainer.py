@@ -1,7 +1,8 @@
 import random
 import pandas as pd
 import numpy as np
-import time, gc
+import time
+import gc
 
 import torch
 import torch.nn as nn
@@ -33,7 +34,7 @@ class MultiClassTrainer:
     A class for training multi-class or multi-label classification models with customizable
     model, optimizer, and scheduler creators. Provides functionality to manage training
     parameters, logging, and random seeds.
-    """    
+    """
     def __init__(
         self,
         num_classes: int = 3,
@@ -176,7 +177,7 @@ class MultiClassTrainer:
     def __init_model(self) -> None:
         """
         Initialize the model, optimizer, and scheduler for training.
-        """        
+        """
         self.model = self.model_creator(self.model_name, self.num_classes)
         self.model = self.model.to(self.device)
 
@@ -197,13 +198,13 @@ class MultiClassTrainer:
 
         Returns:
             Any: The initialized logger.
-        """        
+        """
         return setup_logger()
 
     def __init_tokenizer(self) -> None:
         """
         Initialize the tokenizer using a pre-trained Hugging Face tokenizer.
-        """        
+        """
         self.tokenizer = HFTokenizer().from_pretrained(
             self.model_name, clean_up_tokenization_spaces=True
         )
@@ -243,7 +244,7 @@ class MultiClassTrainer:
 
         Returns:
             Dict[str, Any]: A dictionary containing training and validation metrics, losses, and other details.
-        """        
+        """
         start_training_time = time.time()
 
         self.set_seed(seed)
@@ -462,7 +463,7 @@ class MultiClassTrainer:
 
         Args:
             ret (Dict[str, Any]): Dictionary containing validation metrics and other training results.
-        """        
+        """
         best_epoch = ret.get("best_epoch")
         if best_epoch is not None:
             current_dict = ret["val_metrics"][best_epoch]
@@ -762,7 +763,7 @@ class MultiClassTrainer:
 
         Args:
             path (str): Directory path where the model and tokenizer will be saved.
-        """        
+        """
         self.model.save_pretrained(path, safe_serialization=True)
         self.tokenizer.save_pretrained(path)
 
@@ -772,7 +773,7 @@ class MultiClassTrainer:
 
         Args:
             path (str): Directory path where the model and tokenizer are saved.
-        """        
+        """
         self.tokenizer = HFTokenizer().from_pretrained(path)
         self.model = HFModelForClassification().from_pretrained(path)
 
@@ -1043,9 +1044,9 @@ class MultiClassTrainer:
     def release_model(self) -> None:
         """
         Release the model from memory and clear GPU cache.
-        """        
+        """
         self.model = None
         gc.collect()
         if self.device.startswith("cuda"):
             torch.cuda.empty_cache()
-            torch.cuda.synchronize()            
+            torch.cuda.synchronize()
