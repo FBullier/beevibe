@@ -1,7 +1,6 @@
 import random
 import pandas as pd
 import numpy as np
-import logging
 import time, gc
 
 import torch
@@ -22,34 +21,10 @@ from sklearn.utils.class_weight import compute_class_weight
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from transformers import logging as hf_logging
-
 from beevibe.core.datasets import TextDatasetML, TextDatasetMC
 from beevibe.core.models import HFTokenizer, HFModelForClassification
-
-
-class EarlyStopping:
-    def __init__(self, patience=3, min_delta=0):
-        self.patience = patience
-        self.min_delta = min_delta
-        self.best_loss = None
-        self.counter = 0
-
-    def should_stop(self, val_loss):
-        if self.best_loss is None:
-            self.best_loss = val_loss
-            return False
-        elif val_loss < self.best_loss - self.min_delta:
-            self.best_loss = val_loss
-            self.counter = 0
-            return False
-        elif val_loss >= self.best_loss - self.min_delta:
-            self.counter += 1
-            if self.counter + 1 >= self.patience:
-                return True
-
-        return False
-
+from beevibe.core.earlystopping import EarlyStopping
+from beevibe.utils.logger import setup_logger
 
 class MultiClassTrainer:
     def __init__(
@@ -167,23 +142,7 @@ class MultiClassTrainer:
             self.scheduler = None
 
     def __init_logger(self):
-        logger = logging.getLogger("BeevibeLogger")
-        logger.setLevel(logging.INFO)
-
-        logger.propagate = False
-
-        if not logger.handlers:
-            console_handler = logging.StreamHandler()
-            console_handler.setLevel(logging.INFO)
-
-            formatter = logging.Formatter("%(message)s")
-            console_handler.setFormatter(formatter)
-
-            logger.addHandler(console_handler)
-
-        hf_logging.set_verbosity_error()
-
-        return logger
+        return setup_logger()
 
     def __init_tokenizer(self):
         self.tokenizer = HFTokenizer().from_pretrained(
@@ -679,10 +638,10 @@ class MultiClassTrainer:
 
         return encoded_batch["input_ids"], encoded_batch["attention_mask"]
 
-    def predict(self, texts):
+    def predict(self, texts, max_len=128):
         with torch.no_grad():
             self.model.eval()
-            input_ids, attention_mask = self.__preprocess(texts)
+            input_ids, attention_mask = self.__preprocess(raw_reviews=texts,max_len=max_len)
             outputs = self.model(input_ids, attention_mask=attention_mask)
 
             if self.multilabel:
