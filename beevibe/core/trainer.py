@@ -26,24 +26,50 @@ from beevibe.core.models import HFTokenizer, HFModelForClassification
 from beevibe.core.earlystopping import EarlyStopping
 from beevibe.utils.logger import setup_logger
 
+from typing import List, Optional, Tuple, Callable, Any, Dict
+
 class MultiClassTrainer:
+    """
+    A class for training multi-class or multi-label classification models with customizable
+    model, optimizer, and scheduler creators. Provides functionality to manage training
+    parameters, logging, and random seeds.
+    """    
     def __init__(
         self,
-        num_classes=3,
-        classes_names=[],
-        model_name="camembert-base",
-        max_len=128,
-        lr=1e-5,
-        multilabel=False,
-        device=None,
-        model_creator=None,
-        optimizer_creator=None,
-        optimizer_params=None,
-        scheduler_creator=None,
-        scheduler_params=None,
-        scheduler_needs_loss=True,
-        verbose=True,
-    ):
+        num_classes: int = 3,
+        classes_names: List[str] = [],
+        model_name: str = "camembert-base",
+        max_len: int = 128,
+        lr: float = 1e-5,
+        multilabel: bool = False,
+        device: Optional[str] = None,
+        model_creator: Optional[Callable[[str, int], nn.Module]] = None,
+        optimizer_creator: Optional[Callable[[nn.Module], torch.optim.Optimizer]] = None,
+        optimizer_params: Optional[Dict[str, Any]] = None,
+        scheduler_creator: Optional[Callable[[torch.optim.Optimizer], Any]] = None,
+        scheduler_params: Optional[Dict[str, Any]] = None,
+        scheduler_needs_loss: bool = True,
+        verbose: bool = True,
+    ) -> None:
+        """
+        Initialize the MultiClassTrainer with the specified parameters.
+
+        Args:
+            num_classes (int): Number of classes for classification.
+            classes_names (List[str]): Names of the classes. If empty, generates default names.
+            model_name (str): Name of the model to use (e.g., Hugging Face model name).
+            max_len (int): Maximum token length for the tokenizer.
+            lr (float): Learning rate for the optimizer.
+            multilabel (bool): Whether the task is multi-label classification.
+            device (Optional[str]): Device to use (e.g., 'cuda' or 'cpu'). If None, defaults to CUDA if available.
+            model_creator (Optional[Callable]): Custom function to create the model.
+            optimizer_creator (Optional[Callable]): Custom function to create the optimizer.
+            optimizer_params (Optional[Dict[str, Any]]): Parameters for the optimizer.
+            scheduler_creator (Optional[Callable]): Custom function to create the scheduler.
+            scheduler_params (Optional[Dict[str, Any]]): Parameters for the scheduler.
+            scheduler_needs_loss (bool): Whether the scheduler needs loss information.
+            verbose (bool): If True, enables verbose logging.
+        """
         self.model_name = model_name
         self.num_classes = num_classes
         self.max_len = max_len
@@ -83,22 +109,58 @@ class MultiClassTrainer:
 
         self.logger_info(f"Device : {self.device}")
 
-    def logger_info(self, message):
+    def logger_info(self, message: str) -> None:
+        """
+        Log a message if verbose logging is enabled.
+
+        Args:
+            message (str): The message to log.
+        """
         if self.verbose:
             self.logger.info(message)
 
-    def default_model_creator(self, model_name, num_classes):
+    def default_model_creator(self, model_name: str, num_classes: int) -> nn.Module:
+        """
+        Default function to create a classification model using a pre-trained Hugging Face model.
+
+        Args:
+            model_name (str): Name of the pre-trained model.
+            num_classes (int): Number of output classes.
+
+        Returns:
+            nn.Module: A classification model.
+        """
         return HFModelForClassification().from_pretrained(
             model_name, num_labels=num_classes
         )
 
-    def default_optimizer_creator(self, model, **params):
+    def default_optimizer_creator(self, model: nn.Module, **params: Any) -> torch.optim.Optimizer:
+        """
+        Default function to create an Adam optimizer.
+
+        Args:
+            model (nn.Module): The model for which to create the optimizer.
+            **params: Additional parameters for the optimizer.
+
+        Returns:
+            torch.optim.Optimizer: An Adam optimizer.
+        """
         self.logger_info("Call default optimizer :")
         self.logger_info(f" - lr:{params.get('lr', 1e-5)}")
 
         return Adam(model.parameters(), lr=params.get("lr", 1e-5))
 
-    def default_scheduler_creator(self, optimizer, **params):
+    def default_scheduler_creator(self, optimizer: torch.optim.Optimizer, **params: Any) -> Any:
+        """
+        Default function to create a learning rate scheduler.
+
+        Args:
+            optimizer (torch.optim.Optimizer): The optimizer for which to create the scheduler.
+            **params: Additional parameters for the scheduler.
+
+        Returns:
+            Any: A ReduceLROnPlateau scheduler.
+        """
         self.logger_info("Call default scheduler :")
         self.logger_info(f" - mode:{params.get('mode', 'min')}")
         self.logger_info(f" - factor:{params.get('factor', 0.8)}")
@@ -111,7 +173,10 @@ class MultiClassTrainer:
             patience=params.get("patience", 2),
         )
 
-    def __init_model(self):
+    def __init_model(self) -> None:
+        """
+        Initialize the model, optimizer, and scheduler for training.
+        """        
         self.model = self.model_creator(self.model_name, self.num_classes)
         self.model = self.model.to(self.device)
 
@@ -126,44 +191,59 @@ class MultiClassTrainer:
             self.logger_info("Don't use scheduler")
             self.scheduler = None
 
-    def init_model(self):
-        self.model = self.model_creator(self.model_name, self.num_classes)
-        self.model = self.model.to(self.device)
+    def __init_logger(self) -> Any:
+        """
+        Initialize the logger for the trainer.
 
-        self.optimizer = self.optimizer_creator(self.model, **self.optimizer_params)
-
-        if self.scheduler_creator:
-            self.logger_info("Use scheduler")
-            self.scheduler = self.scheduler_creator(
-                self.optimizer, **self.scheduler_params
-            )
-        else:
-            self.logger_info("Don't use scheduler")
-            self.scheduler = None
-
-    def __init_logger(self):
+        Returns:
+            Any: The initialized logger.
+        """        
         return setup_logger()
 
-    def __init_tokenizer(self):
+    def __init_tokenizer(self) -> None:
+        """
+        Initialize the tokenizer using a pre-trained Hugging Face tokenizer.
+        """        
         self.tokenizer = HFTokenizer().from_pretrained(
             self.model_name, clean_up_tokenization_spaces=True
         )
 
-    def set_seed(self, seed=1811):
+    def set_seed(self, seed: int = 1811) -> None:
+        """
+        Set the random seed for reproducibility.
+
+        Args:
+            seed (int): The random seed value.
+        """
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
 
     def __train(
         self,
-        train_loader,
-        val_loader,
-        num_epochs=20,
-        class_weights=None,
-        patience=3,
-        min_delta=0.001,
-        seed=1811,
-    ):
+        train_loader: DataLoader,
+        val_loader: Optional[DataLoader],
+        num_epochs: int = 20,
+        class_weights: Optional[torch.Tensor] = None,
+        patience: int = 3,
+        min_delta: float = 0.001,
+        seed: int = 1811,
+    ) -> Dict[str, Any]:
+        """
+        Train the model using the provided training and validation data loaders.
+
+        Args:
+            train_loader (DataLoader): DataLoader for the training data.
+            val_loader (Optional[DataLoader]): DataLoader for the validation data. Can be None.
+            num_epochs (int): Number of epochs to train the model.
+            class_weights (Optional[torch.Tensor]): Class weights for loss computation.
+            patience (int): Early stopping patience.
+            min_delta (float): Minimum improvement in validation loss to reset patience.
+            seed (int): Random seed for reproducibility.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing training and validation metrics, losses, and other details.
+        """        
         start_training_time = time.time()
 
         self.set_seed(seed)
@@ -313,7 +393,17 @@ class MultiClassTrainer:
 
         return ret
 
-    def __calculate_metrics(self, y_true, y_pred):
+    def __calculate_metrics(self, y_true: List[Any], y_pred: List[Any]) -> Dict[str, Any]:
+        """
+        Calculate metrics for the provided true and predicted labels.
+
+        Args:
+            y_true (List[Any]): Ground truth labels.
+            y_pred (List[Any]): Predicted labels.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing computed metrics such as precision, recall, F1 score, accuracy, and confusion matrix.
+        """
         res = {}
 
         y_true = np.array(y_true)
@@ -366,7 +456,13 @@ class MultiClassTrainer:
 
         return res
 
-    def __print_metrics(self, ret):
+    def __print_metrics(self, ret: Dict[str, Any]) -> None:
+        """
+        Print global and per-class metrics, including confusion matrices.
+
+        Args:
+            ret (Dict[str, Any]): Dictionary containing validation metrics and other training results.
+        """        
         best_epoch = ret.get("best_epoch")
         if best_epoch is not None:
             current_dict = ret["val_metrics"][best_epoch]
@@ -457,7 +553,14 @@ class MultiClassTrainer:
                 )  # Alignement centré pour les valeurs
                 self.logger_info(row_str)
 
-    def display_losses(self, ret):
+    def display_losses(self, ret: Dict[str, Any]) -> None:
+        """
+        Plot training and validation losses over epochs.
+
+        Args:
+            ret (Dict[str, Any]): Dictionary containing training and validation losses.
+        """
+
         train_losses = ret.get("train_losses")
         val_losses = ret.get("val_losses")
 
@@ -488,7 +591,16 @@ class MultiClassTrainer:
 
         plt.show()
 
-    def __validation(self, val_loader):
+    def __validation(self, val_loader: DataLoader) -> Tuple[float, Dict[str, Any], List[Any], List[Any]]:
+        """
+        Perform validation for the provided data loader.
+
+        Args:
+            val_loader (DataLoader): DataLoader for the validation data.
+
+        Returns:
+            Tuple[float, Dict[str, Any], List[Any], List[Any]]: Validation loss, metrics, predictions, and true labels.
+        """
         self.model.eval()
         val_loss = 0
         all_preds = []
@@ -537,7 +649,17 @@ class MultiClassTrainer:
 
         return val_loss, res_metrics, all_preds, all_labels
 
-    def compute_class_weights(self, train_labels, num_classes):
+    def compute_class_weights(self, train_labels: List[Any], num_classes: int) -> torch.Tensor:
+        """
+        Compute class weights for balancing the loss function.
+
+        Args:
+            train_labels (List[Any]): Training labels.
+            num_classes (int): Number of classes.
+
+        Returns:
+            torch.Tensor: Tensor containing class weights.
+        """
         if not self.multilabel:
             # Multi-class case
             class_weights = compute_class_weight(
@@ -564,16 +686,34 @@ class MultiClassTrainer:
 
     def train(
         self,
-        texts,
-        labels,
-        train_size=1.0,
-        num_epochs=20,
-        batch_size=4,
-        balanced=False,
-        patience=3,
-        min_delta=0.001,
-        seed=1811,
-    ):
+        texts: List[str],
+        labels: List[Any],
+        train_size: float = 1.0,
+        num_epochs: int = 20,
+        batch_size: int = 4,
+        balanced: bool = False,
+        patience: int = 3,
+        min_delta: float = 0.001,
+        seed: int = 1811,
+    ) -> Dict[str, Any]:
+        """
+        Train the model using the provided texts and labels.
+
+        Args:
+            texts (List[str]): List of input text samples.
+            labels (List[Any]): Corresponding labels for the input texts.
+            train_size (float): Proportion of data to use for training (default: 1.0).
+            num_epochs (int): Number of training epochs (default: 20).
+            batch_size (int): Batch size for training (default: 4).
+            balanced (bool): Whether to compute class weights for balancing (default: False).
+            patience (int): Early stopping patience (default: 3).
+            min_delta (float): Minimum improvement in validation loss to reset patience (default: 0.001).
+            seed (int): Random seed for reproducibility (default: 1811).
+
+        Returns:
+            Dict[str, Any]: Dictionary containing training results, including losses and metrics.
+        """
+
         self.__init_tokenizer()
 
         if train_size == 1.0:
@@ -616,15 +756,38 @@ class MultiClassTrainer:
 
         return ret
 
-    def save(self, path):
+    def save(self, path: str) -> None:
+        """
+        Save the trained model and tokenizer to the specified path.
+
+        Args:
+            path (str): Directory path where the model and tokenizer will be saved.
+        """        
         self.model.save_pretrained(path, safe_serialization=True)
         self.tokenizer.save_pretrained(path)
 
-    def load(self, path):
+    def load(self, path: str) -> None:
+        """
+        Load a pre-trained model and tokenizer from the specified path.
+
+        Args:
+            path (str): Directory path where the model and tokenizer are saved.
+        """        
         self.tokenizer = HFTokenizer().from_pretrained(path)
         self.model = HFModelForClassification().from_pretrained(path)
 
-    def __preprocess(self, raw_reviews, max_len=128):
+    def __preprocess(self, raw_reviews: List[str], max_len: int = 128) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Preprocess input text samples for the model.
+
+        Args:
+            raw_reviews (List[str]): List of raw text inputs.
+            max_len (int): Maximum sequence length for tokenization (default: 128).
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Tokenized input IDs and attention masks.
+        """
+
         encoded_batch = self.tokenizer(
             raw_reviews,
             add_special_tokens=True,
@@ -638,7 +801,17 @@ class MultiClassTrainer:
 
         return encoded_batch["input_ids"], encoded_batch["attention_mask"]
 
-    def predict(self, texts, max_len=128):
+    def predict(self, texts: List[str], max_len: int = 128) -> List[Any]:
+        """
+        Perform inference on a list of text inputs.
+
+        Args:
+            texts (List[str]): List of input text samples.
+            max_len (int): Maximum sequence length for tokenization (default: 128).
+
+        Returns:
+            List[Any]: Predicted labels or probabilities.
+        """
         with torch.no_grad():
             self.model.eval()
             input_ids, attention_mask = self.__preprocess(raw_reviews=texts,max_len=max_len)
@@ -659,16 +832,34 @@ class MultiClassTrainer:
 
     def holdout(
         self,
-        texts,
-        labels,
-        val_size=0.2,
-        num_epochs=20,
-        batch_size=4,
-        balanced=False,
-        patience=3,
-        min_delta=0.001,
-        seed=1811,
-    ):
+        texts: List[str],
+        labels: List[Any],
+        val_size: float = 0.2,
+        num_epochs: int = 20,
+        batch_size: int = 4,
+        balanced: bool = False,
+        patience: int = 3,
+        min_delta: float = 0.001,
+        seed: int = 1811,
+    ) -> Dict[str, Any]:
+        """
+        Perform holdout validation on the provided dataset.
+
+        Args:
+            texts (List[str]): List of input text samples.
+            labels (List[Any]): Corresponding labels for the input texts.
+            val_size (float): Proportion of data to use for validation (default: 0.2).
+            num_epochs (int): Number of training epochs (default: 20).
+            batch_size (int): Batch size for training (default: 4).
+            balanced (bool): Whether to compute class weights for balancing (default: False).
+            patience (int): Early stopping patience (default: 3).
+            min_delta (float): Minimum improvement in validation loss to reset patience (default: 0.001).
+            seed (int): Random seed for reproducibility (default: 1811).
+
+        Returns:
+            Dict[str, Any]: Dictionary containing holdout validation results.
+        """
+
         self.__init_tokenizer()
 
         train_texts, val_texts, train_labels, val_labels = train_test_split(
@@ -715,16 +906,34 @@ class MultiClassTrainer:
 
     def cross_validation(
         self,
-        texts,
-        labels,
-        n_splits=5,
-        num_epochs=20,
-        batch_size=4,
-        balanced=False,
-        patience=3,
-        min_delta=0.001,
-        seed=1811,
-    ):
+        texts: List[str],
+        labels: List[Any],
+        n_splits: int = 5,
+        num_epochs: int = 20,
+        batch_size: int = 4,
+        balanced: bool = False,
+        patience: int = 3,
+        min_delta: float = 0.001,
+        seed: int = 1811,
+    ) -> List[Dict[str, Any]]:
+        """
+        Perform cross-validation on the provided dataset.
+
+        Args:
+            texts (List[str]): List of input text samples.
+            labels (List[Any]): Corresponding labels for the input texts.
+            n_splits (int): Number of folds for cross-validation (default: 5).
+            num_epochs (int): Number of training epochs (default: 20).
+            batch_size (int): Batch size for training (default: 4).
+            balanced (bool): Whether to compute class weights for balancing (default: False).
+            patience (int): Early stopping patience (default: 3).
+            min_delta (float): Minimum improvement in validation loss to reset patience (default: 0.001).
+            seed (int): Random seed for reproducibility (default: 1811).
+
+        Returns:
+            List[Dict[str, Any]]: List of dictionaries containing cross-validation results for each fold.
+        """
+
         self.__init_tokenizer()
 
         kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
@@ -831,12 +1040,12 @@ class MultiClassTrainer:
 
         return rets
 
-    def release_model(
-        self
-    ):
+    def release_model(self) -> None:
+        """
+        Release the model from memory and clear GPU cache.
+        """        
         self.model = None
         gc.collect()
         if self.device.startswith("cuda"):
             torch.cuda.empty_cache()
             torch.cuda.synchronize()            
-
