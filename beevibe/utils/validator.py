@@ -1,3 +1,4 @@
+import os
 from pydantic import BaseModel, field_validator
 from typing import List, Union, Any, Optional
 
@@ -32,7 +33,7 @@ class DatasetConfig(BaseModel):
 
     @field_validator("num_classes", "max_len", "seed", "num_epochs", "batch_size", "patience", "n_splits")
     def validate_int(cls, value, field):
-        if value is not None and not value >= 1):
+        if value is not None and not value >= 1:
             raise ValueError(f"{field.name} must be upper than 0.")
         return value
 
@@ -48,3 +49,11 @@ class DatasetConfig(BaseModel):
             raise ValueError(f"{field.name} must be upper 0 and lower 0.1")
         return value
     
+    @field_validator("path")
+    def validate_path(cls, value, field):
+        if value is not None:
+            if not os.path.exists(value):
+                raise ValueError(f"The {field.name} '{value}' does not exist.")
+            if not (os.path.isfile(value) or os.path.isdir(value)):
+                raise ValueError(f"The {field.name} '{value}' is neither a valid file nor a directory.")
+        return value

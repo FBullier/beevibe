@@ -26,6 +26,7 @@ from beevibe.core.datasets import TextDatasetML, TextDatasetMC
 from beevibe.core.models import HFTokenizer, HFModelForClassification
 from beevibe.core.earlystopping import EarlyStopping
 from beevibe.utils.logger import setup_logger
+from beevibe.utils.validator import DatasetConfig
 
 from typing import List, Optional, Tuple, Callable, Any, Dict
 
@@ -216,6 +217,11 @@ class MultiClassTrainer:
         Args:
             seed (int): The random seed value.
         """
+
+        DatasetConfig(
+            seed=seed
+            )
+        
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -650,7 +656,7 @@ class MultiClassTrainer:
 
         return val_loss, res_metrics, all_preds, all_labels
 
-    def compute_class_weights(self, train_labels: List[Any], num_classes: int) -> torch.Tensor:
+    def compute_class_weights(self, labels: List[Any], num_classes: int) -> torch.Tensor:
         """
         Compute class weights for balancing the loss function.
 
@@ -661,15 +667,20 @@ class MultiClassTrainer:
         Returns:
             torch.Tensor: Tensor containing class weights.
         """
+        DatasetConfig(
+            labels=labels,
+            num_classes=num_classes
+            )
+
         if not self.multilabel:
             # Multi-class case
             class_weights = compute_class_weight(
-                class_weight="balanced", classes=np.arange(num_classes), y=train_labels
+                class_weight="balanced", classes=np.arange(num_classes), y=labels
             )
             return torch.tensor(class_weights, dtype=torch.float).to(self.device)
 
         # Multi-label case
-        train_labels = np.array(train_labels)
+        train_labels = np.array(labels)
         num_samples = train_labels.shape[0]
         class_weights = []
 
@@ -714,6 +725,18 @@ class MultiClassTrainer:
         Returns:
             Dict[str, Any]: Dictionary containing training results, including losses and metrics.
         """
+
+        DatasetConfig(
+            texts=texts, 
+            labels=labels,
+            train_size=train_size,
+            num_epochs=num_epochs,
+            batch_size=batch_size,
+            balanced=balanced,
+            patience=patience,
+            min_delta=min_delta,
+            seed=seed
+            )
 
         self.__init_tokenizer()
 
@@ -764,6 +787,11 @@ class MultiClassTrainer:
         Args:
             path (str): Directory path where the model and tokenizer will be saved.
         """
+
+        DatasetConfig(
+            path=path
+            )
+
         self.model.save_pretrained(path, safe_serialization=True)
         self.tokenizer.save_pretrained(path)
 
@@ -774,6 +802,10 @@ class MultiClassTrainer:
         Args:
             path (str): Directory path where the model and tokenizer are saved.
         """
+        DatasetConfig(
+            path=path
+            )
+
         self.tokenizer = HFTokenizer().from_pretrained(path)
         self.model = HFModelForClassification().from_pretrained(path)
 
@@ -813,6 +845,12 @@ class MultiClassTrainer:
         Returns:
             List[Any]: Predicted labels or probabilities.
         """
+
+        DatasetConfig(
+            texts=texts, 
+            max_len=max_len
+            )
+
         with torch.no_grad():
             self.model.eval()
             input_ids, attention_mask = self.__preprocess(raw_reviews=texts,max_len=max_len)
@@ -860,6 +898,18 @@ class MultiClassTrainer:
         Returns:
             Dict[str, Any]: Dictionary containing holdout validation results.
         """
+
+        DatasetConfig(
+            texts=texts, 
+            labels=labels,
+            val_size=val_size,
+            num_epochs=num_epochs,
+            batch_size=batch_size,
+            balanced=balanced,
+            patience=patience,
+            min_delta=min_delta,
+            seed=seed
+            )
 
         self.__init_tokenizer()
 
@@ -934,6 +984,18 @@ class MultiClassTrainer:
         Returns:
             List[Dict[str, Any]]: List of dictionaries containing cross-validation results for each fold.
         """
+
+        DatasetConfig(
+            texts=texts, 
+            labels=labels,
+            n_splits=n_splits,
+            num_epochs=num_epochs,
+            batch_size=batch_size,
+            balanced=balanced,
+            patience=patience,
+            min_delta=min_delta,
+            seed=seed
+            )
 
         self.__init_tokenizer()
 

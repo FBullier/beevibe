@@ -6,6 +6,7 @@ import transformers
 from huggingface_hub.utils import disable_progress_bars as hfhub_disable_progress_bar
 hfhub_disable_progress_bar()
 
+
 class HFTokenizer:
     """
     A wrapper for Hugging Face Tokenizer to handle tokenization with custom configurations.
@@ -17,26 +18,23 @@ class HFTokenizer:
         """
         super(HFTokenizer, self).__init__()
 
-    def from_pretrained(self, model_name: str, clean_up_tokenization_spaces: bool = None):
+    def from_pretrained(self, model_name: str, **kwargs):
         """
         Load a tokenizer from a pretrained model.
 
         Args:
             model_name (str): The name of the pretrained model.
-            clean_up_tokenization_spaces (bool, optional): Whether to clean up tokenization spaces. Default is None.
+            **kwargs: Additional keyword arguments to pass to the
+                      AutoTokenizer.from_pretrained method.
 
         Returns:
             transformers.PreTrainedTokenizer: A tokenizer instance.
         """
-        if clean_up_tokenization_spaces is None:
-            return AutoTokenizer.from_pretrained(
-                pretrained_model_name_or_path=model_name
-            )
-        else:
-            return AutoTokenizer.from_pretrained(
-                pretrained_model_name_or_path=model_name,
-                clean_up_tokenization_spaces=clean_up_tokenization_spaces,
-            )
+        return AutoTokenizer.from_pretrained(
+            pretrained_model_name_or_path=model_name,
+            **kwargs
+        )
+
 
 class HFModelForClassification:
     """
@@ -49,26 +47,22 @@ class HFModelForClassification:
         """
         super(HFModelForClassification, self).__init__()
 
-    def from_pretrained(self, model_name: str, num_labels: int = None):
+    def from_pretrained(self, model_name: str, **kwargs):
         """
         Load a model for sequence classification from a pretrained model.
 
         Args:
             model_name (str): The name of the pretrained model.
-            num_labels (int, optional): Number of labels for classification. Default is None.
+            **kwargs: Additional keyword arguments to pass to the
+                      AutoModelForSequenceClassification.from_pretrained method.
 
         Returns:
             transformers.AutoModelForSequenceClassification: A model instance.
         """
-        if num_labels is None:
-            return AutoModelForSequenceClassification.from_pretrained(
-                pretrained_model_name_or_path=model_name,
-            )
-        else:
-            return AutoModelForSequenceClassification.from_pretrained(
-                pretrained_model_name_or_path=model_name,
-                num_labels=num_labels
-            )
+        return AutoModelForSequenceClassification.from_pretrained(
+            pretrained_model_name_or_path=model_name,
+            **kwargs
+        )
 
 class SimpleModel(nn.Module):
     """
