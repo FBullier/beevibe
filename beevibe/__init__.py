@@ -11,8 +11,8 @@ from .core.datasets import TextDatasetMC
 from .core.datasets import TextDatasetML
 from .core.models import HFTokenizer
 from .core.models import HFModelForClassification
-from .core.models import SimpleModel
-from .core.models import CustomModel
+from .core.models import BVSimpleMaskModelForClassification
+from .core.models import BVCustomMaskModelForClassification
 from .core.schedulers import AnnealOnPlateau
 
 #from .ai.openai_interface import OpenAIInterface
@@ -30,7 +30,7 @@ __all__ = [
     "TextDatasetML",
     "HFTokenizer",
     "HFModelForClassification",
-    "SimpleModel",
-    "CustomModel",
+    "BVSimpleMaskModelForClassification",
+    "BVCustomMaskModelForClassification",
     "AnnealOnPlateau",
 ]

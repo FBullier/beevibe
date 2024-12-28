@@ -3,6 +3,8 @@ import torch.nn as nn
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 import transformers
 
+from typing import Optional
+
 from huggingface_hub.utils import disable_progress_bars as hfhub_disable_progress_bar
 hfhub_disable_progress_bar()
 
@@ -64,7 +66,7 @@ class HFModelForClassification:
             **kwargs
         )
 
-class SimpleModel(nn.Module):
+class BVSimpleMaskModelForClassification(nn.Module):
     """
     A simple model for sequence classification with a linear stack on top of a pretrained transformer.
     """
@@ -77,11 +79,13 @@ class SimpleModel(nn.Module):
             model_name (str): The name of the pretrained model.
             num_labels (int): The number of labels for classification.
         """
-        super(SimpleModel, self).__init__()
+        super(BVSimpleMaskModelForClassification, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
         self.base_model = AutoModel.from_pretrained(self.model_name)
-        self.linear_relu_stack = nn.Sequential(
+        self.config = self.base_model.config
+
+        self.classifier = nn.Sequential(
             nn.Dropout(0.01),
             nn.Linear(768, 128),
             nn.ReLU(),
@@ -102,11 +106,11 @@ class SimpleModel(nn.Module):
         """
         outputs = self.base_model(input_ids, attention_mask=attention_mask)
         embeddings = outputs[0][:, 0]  # Extract the CLS token representation
-        logits = self.linear_relu_stack(embeddings)
+        logits = self.classifier(embeddings)
 
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
 
-class CustomModel(nn.Module):
+class BVCustomMaskModelForClassification(nn.Module):
     """
     A custom model for sequence classification with a flexible linear stack on top of a pretrained transformer.
     """
@@ -120,13 +124,14 @@ class CustomModel(nn.Module):
             num_labels (int): The number of labels for classification.
             layer_configs (list of dict): Configuration for custom layers.
         """
-        super(CustomModel, self).__init__()
+        super(BVCustomMaskModelForClassification, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
         self.base_model = AutoModel.from_pretrained(self.model_name)
+        self.config = self.base_model.config
 
         # Build custom linear stack
-        self.linear_relu_stack = self._build_custom_stack(layer_configs)
+        self.classifier = self._build_custom_stack(layer_configs)
 
     def _build_custom_stack(self, layer_configs: list[dict]) -> nn.Sequential:
         """
@@ -177,7 +182,11 @@ class CustomModel(nn.Module):
 
         return nn.Sequential(*layers)
 
-    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, labels: torch.Tensor = None):
+    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, labels: torch.Tensor = None, 
+                inputs_embeds: Optional[torch.FloatTensor] = None, 
+                output_attentions: Optional[bool] = None, 
+                output_hidden_states: Optional[bool] = None, 
+                return_dict: Optional[bool] = None):
         """
         Forward pass for the model.
 
@@ -196,6 +205,6 @@ class CustomModel(nn.Module):
         ]  # CLS token representation (shape: [batch_size, 768] for Camembert)
 
         # Pass embeddings through custom stack
-        logits = self.linear_relu_stack(embeddings)
+        logits = self.classifier(embeddings)
 
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)

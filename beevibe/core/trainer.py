@@ -26,9 +26,12 @@ from beevibe.core.datasets import TextDatasetML, TextDatasetMC
 from beevibe.core.models import HFTokenizer, HFModelForClassification
 from beevibe.core.earlystopping import EarlyStopping
 from beevibe.utils.logger import setup_logger
-from beevibe.utils.validator import DatasetConfig
+#from beevibe.utils.validator import DatasetConfig
 
 from typing import List, Optional, Tuple, Callable, Any, Dict
+
+from peft import LoraConfig, TaskType
+from peft import get_peft_model
 
 class MultiClassTrainer:
     """
@@ -51,6 +54,7 @@ class MultiClassTrainer:
         scheduler_creator: Optional[Callable[[torch.optim.Optimizer], Any]] = None,
         scheduler_params: Optional[Dict[str, Any]] = None,
         scheduler_needs_loss: bool = True,
+        using_lora: bool = False,
         verbose: bool = True,
     ) -> None:
         """
@@ -77,6 +81,8 @@ class MultiClassTrainer:
         self.max_len = max_len
         self.lr = lr
         self.multilabel = multilabel
+
+        self.use_lora = using_lora
 
         self.verbose = verbose
 
@@ -175,12 +181,41 @@ class MultiClassTrainer:
             patience=params.get("patience", 2),
         )
 
+    def __find_target_modules(self, model):
+        target_modules = []
+        for name, module in model.named_modules():
+            if any(keyword in name for keyword in ["query", "key", "dense"]):
+                target_modules.append(name)
+        return target_modules
+
+
     def __init_model(self) -> None:
         """
         Initialize the model, optimizer, and scheduler for training.
         """
         self.model = self.model_creator(self.model_name, self.num_classes)
         self.model = self.model.to(self.device)
+
+        if self.use_lora:
+
+            self.logger_info("Using Lora")
+
+            target_modules = self.__find_target_modules(self.model)
+
+            lora_config = LoraConfig(
+                task_type=TaskType.SEQ_CLS, 
+                r=8,                        # Rank of low-rank decomposition
+                lora_alpha=32,              # Scaling factor
+                target_modules=target_modules,  # Target modules for LoRA
+                lora_dropout=0.1,           # Dropout for regularization
+                bias="none"                 # Do not fine-tune biases
+            )
+
+            self.model = get_peft_model(self.model, lora_config)
+
+            for name, param in self.model.named_parameters():
+                if "classifier" in name:  # Matches all layers under the classifier head
+                    param.requires_grad = True
 
         self.optimizer = self.optimizer_creator(self.model, **self.optimizer_params)
 
@@ -218,9 +253,9 @@ class MultiClassTrainer:
             seed (int): The random seed value.
         """
 
-        DatasetConfig(
-            seed=seed
-            )
+        #DatasetConfig(
+        #    seed=seed
+        #    )
         
         random.seed(seed)
         np.random.seed(seed)
@@ -667,10 +702,10 @@ class MultiClassTrainer:
         Returns:
             torch.Tensor: Tensor containing class weights.
         """
-        DatasetConfig(
-            labels=labels,
-            num_classes=num_classes
-            )
+        #DatasetConfig(
+        #    labels=labels,
+        #    num_classes=num_classes
+        #    )
 
         if not self.multilabel:
             # Multi-class case
@@ -726,17 +761,17 @@ class MultiClassTrainer:
             Dict[str, Any]: Dictionary containing training results, including losses and metrics.
         """
 
-        DatasetConfig(
-            texts=texts, 
-            labels=labels,
-            train_size=train_size,
-            num_epochs=num_epochs,
-            batch_size=batch_size,
-            balanced=balanced,
-            patience=patience,
-            min_delta=min_delta,
-            seed=seed
-            )
+        #DatasetConfig(
+        #    texts=texts, 
+        #    labels=labels,
+        #    train_size=train_size,
+        #    num_epochs=num_epochs,
+        #    batch_size=batch_size,
+        #    balanced=balanced,
+        #    patience=patience,
+        #    min_delta=min_delta,
+        #    seed=seed
+        #    )
 
         self.__init_tokenizer()
 
@@ -788,9 +823,9 @@ class MultiClassTrainer:
             path (str): Directory path where the model and tokenizer will be saved.
         """
 
-        DatasetConfig(
-            path=path
-            )
+        #DatasetConfig(
+        #    path=path
+        #    )
 
         self.model.save_pretrained(path, safe_serialization=True)
         self.tokenizer.save_pretrained(path)
@@ -802,9 +837,9 @@ class MultiClassTrainer:
         Args:
             path (str): Directory path where the model and tokenizer are saved.
         """
-        DatasetConfig(
-            path=path
-            )
+        #DatasetConfig(
+        #    path=path
+        #    )
 
         self.tokenizer = HFTokenizer().from_pretrained(path)
         self.model = HFModelForClassification().from_pretrained(path)
@@ -846,10 +881,10 @@ class MultiClassTrainer:
             List[Any]: Predicted labels or probabilities.
         """
 
-        DatasetConfig(
-            texts=texts, 
-            max_len=max_len
-            )
+        #DatasetConfig(
+        #    texts=texts, 
+        #    max_len=max_len
+        #    )
 
         with torch.no_grad():
             self.model.eval()
@@ -899,17 +934,17 @@ class MultiClassTrainer:
             Dict[str, Any]: Dictionary containing holdout validation results.
         """
 
-        DatasetConfig(
-            texts=texts, 
-            labels=labels,
-            val_size=val_size,
-            num_epochs=num_epochs,
-            batch_size=batch_size,
-            balanced=balanced,
-            patience=patience,
-            min_delta=min_delta,
-            seed=seed
-            )
+        #DatasetConfig(
+        #    texts=texts, 
+        #    labels=labels,
+        #    val_size=val_size,
+        #    num_epochs=num_epochs,
+        #    batch_size=batch_size,
+        #    balanced=balanced,
+        #    patience=patience,
+        #    min_delta=min_delta,
+        #    seed=seed
+        #    )
 
         self.__init_tokenizer()
 
@@ -985,17 +1020,17 @@ class MultiClassTrainer:
             List[Dict[str, Any]]: List of dictionaries containing cross-validation results for each fold.
         """
 
-        DatasetConfig(
-            texts=texts, 
-            labels=labels,
-            n_splits=n_splits,
-            num_epochs=num_epochs,
-            batch_size=batch_size,
-            balanced=balanced,
-            patience=patience,
-            min_delta=min_delta,
-            seed=seed
-            )
+        #DatasetConfig(
+        #    texts=texts, 
+        #    labels=labels,
+        #    n_splits=n_splits,
+        #    num_epochs=num_epochs,
+        #    batch_size=batch_size,
+        #    balanced=balanced,
+        #    patience=patience,
+        #    min_delta=min_delta,
+        #    seed=seed
+        #    )
 
         self.__init_tokenizer()
 

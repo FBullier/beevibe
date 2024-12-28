@@ -5,13 +5,13 @@ from typing import List, Union, Any, Optional
 
 class DatasetConfig(BaseModel):
 
-    texts: Optional[List[str]]
-    labels: Optional[List[Any]]
+    #texts: Optional[List[str]]
+    #labels: Optional[List[Any]]
 
-    model_name: Optional[str]
-    path: Optional[str]
+    #model_name: Optional[str]
+    #path: Optional[str]
 
-    num_classes: Optional[int]
+    #num_classes: Optional[int]
     seed: Optional[int] = 1811
     num_epochs:Optional[int] = 20
     batch_size: Optional[int] = 4
