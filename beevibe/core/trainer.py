@@ -54,7 +54,10 @@ class MultiClassTrainer:
         scheduler_creator: Optional[Callable[[torch.optim.Optimizer], Any]] = None,
         scheduler_params: Optional[Dict[str, Any]] = None,
         scheduler_needs_loss: bool = True,
-        using_lora: bool = False,
+        use_lora: bool = False,
+        lora_r: int = 8,
+        lora_alpha: int = 32,
+        lora_dropout: float = 0.1,
         verbose: bool = True,
     ) -> None:
         """
@@ -76,13 +79,33 @@ class MultiClassTrainer:
             scheduler_needs_loss (bool): Whether the scheduler needs loss information.
             verbose (bool): If True, enables verbose logging.
         """
+
+        _ = DatasetConfig(num_classes=num_classes, 
+                          classes_names=classes_names,
+                          model_name=model_name,
+                          max_len=max_len,
+                          lr=lr,
+                          multilabel=multilabel,
+                          device=device,
+                          verbose=verbose,
+                          use_lora=use_lora,
+                          lora_r=lora_r,
+                          lora_alpha=lora_alpha,
+                          lora_dropout=lora_dropout
+                          )
+
         self.model_name = model_name
         self.num_classes = num_classes
         self.max_len = max_len
         self.lr = lr
         self.multilabel = multilabel
 
-        self.use_lora = using_lora
+        self.use_lora = use_lora
+
+        if not self.use_lora:
+            self.lora_r = None
+            self.lora_alpha = None
+            self.lora_dropout = None
 
         self.verbose = verbose
 
@@ -188,6 +211,19 @@ class MultiClassTrainer:
                 target_modules.append(name)
         return target_modules
 
+    def __print_trainable_parameters(self, model):
+        """
+        Prints the number of trainable parameters in the model.
+        """
+        trainable_params = 0
+        all_param = 0
+        for _, param in model.named_parameters():
+            all_param += param.numel()
+            if param.requires_grad:
+                trainable_params += param.numel()
+
+        formatted_string = f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param}"
+        self.logger_info(formatted_string)
 
     def __init_model(self) -> None:
         """
@@ -201,6 +237,7 @@ class MultiClassTrainer:
             self.logger_info("Using Lora")
 
             target_modules = self.__find_target_modules(self.model)
+            self.logger_info("Target modules : ", target_modules)
 
             lora_config = LoraConfig(
                 task_type=TaskType.SEQ_CLS, 
@@ -216,6 +253,9 @@ class MultiClassTrainer:
             for name, param in self.model.named_parameters():
                 if "classifier" in name:  # Matches all layers under the classifier head
                     param.requires_grad = True
+
+            self.__print_trainable_parameters(self.model)
+
 
         self.optimizer = self.optimizer_creator(self.model, **self.optimizer_params)
 

@@ -66,7 +66,7 @@ class HFModelForClassification:
             **kwargs
         )
 
-class BVSimpleMaskModelForClassification(nn.Module):
+class BeeSimpleMaskModelForClassification(nn.Module):
     """
     A simple model for sequence classification with a linear stack on top of a pretrained transformer.
     """
@@ -79,7 +79,7 @@ class BVSimpleMaskModelForClassification(nn.Module):
             model_name (str): The name of the pretrained model.
             num_labels (int): The number of labels for classification.
         """
-        super(BVSimpleMaskModelForClassification, self).__init__()
+        super(BeeSimpleMaskModelForClassification, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
         self.base_model = AutoModel.from_pretrained(self.model_name)
@@ -110,7 +110,7 @@ class BVSimpleMaskModelForClassification(nn.Module):
 
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
 
-class BVCustomMaskModelForClassification(nn.Module):
+class BeeCustomMaskModelForClassification(nn.Module):
     """
     A custom model for sequence classification with a flexible linear stack on top of a pretrained transformer.
     """
@@ -124,7 +124,7 @@ class BVCustomMaskModelForClassification(nn.Module):
             num_labels (int): The number of labels for classification.
             layer_configs (list of dict): Configuration for custom layers.
         """
-        super(BVCustomMaskModelForClassification, self).__init__()
+        super(BeeCustomMaskModelForClassification, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
         self.base_model = AutoModel.from_pretrained(self.model_name)
