@@ -1,19 +1,18 @@
 import os
 from pydantic import BaseModel, field_validator
-from typing import List, Union, Any, Optional
+from typing import List, Any, Optional
 
 
 class DatasetConfig(BaseModel):
+    texts: Optional[List[str]] = None
+    labels: Optional[List[Any]] = None
 
-    #texts: Optional[List[str]]
-    #labels: Optional[List[Any]]
+    model_name: Optional[str] = None
+    path: Optional[str] = None
 
-    #model_name: Optional[str]
-    #path: Optional[str]
-
-    #num_classes: Optional[int]
+    num_classes: Optional[int] = None
     seed: Optional[int] = 1811
-    num_epochs:Optional[int] = 20
+    num_epochs: Optional[int] = 20
     batch_size: Optional[int] = 4
     patience: Optional[int] = 3
     max_len: Optional[int] = 128
@@ -25,35 +24,56 @@ class DatasetConfig(BaseModel):
 
     balanced: Optional[bool] = False
 
-    @field_validator("texts", "labels", mode="before")
-    def validate_non_empty_list(cls, value, field):
-        if value is not None and not isinstance(value, list):
-            raise ValueError(f"{field.name} must be a list.")
-        return value
-
-    @field_validator("num_classes", "max_len", "seed", "num_epochs", "batch_size", "patience", "n_splits")
-    def validate_int(cls, value, field):
-        if value is not None and not value >= 1:
-            raise ValueError(f"{field.name} must be upper than 0.")
-        return value
-
-    @field_validator("train_size", "val_size")
-    def validate_size(cls, value, field):
-        if value is not None and not (0.0 < value <= 1.0):
-            raise ValueError(f"{field.name} must be upper 0 and lower 1.0")
-        return value
-
-    @field_validator("min_delta")
-    def validate_delta(cls, value, field):
-        if value is not None and not (0.0 < value <= 0.1) :
-            raise ValueError(f"{field.name} must be upper 0 and lower 0.1")
-        return value
-    
-    @field_validator("path")
-    def validate_path(cls, value, field):
+    @field_validator("texts", mode="before")
+    def validate_texts(cls, value):
+        """Validate the `texts` field."""
         if value is not None:
-            if not os.path.exists(value):
-                raise ValueError(f"The {field.name} '{value}' does not exist.")
-            if not (os.path.isfile(value) or os.path.isdir(value)):
-                raise ValueError(f"The {field.name} '{value}' is neither a valid file nor a directory.")
+            if not isinstance(value, list):
+                raise TypeError("texts must be a list.")
+            if not all(isinstance(item, str) for item in value):
+                raise TypeError("All elements in texts must be strings.")
         return value
+
+    @field_validator("seed", "num_classes", "num_epochs", "batch_size", "patience", "max_len", "n_splits", mode="before")
+    def validate_positive_integers(cls, value, info):
+        """Validate integer fields to ensure they are positive and >= 0."""
+        if value is not None:
+            if not isinstance(value, int):
+                raise TypeError(f"{info.field_name} must be an integer.")
+            if value < 0:
+                raise ValueError(f"{info.field_name} cannot be less than 0.")
+        return value
+
+    @field_validator("train_size", "val_size", "min_delta", mode="before")
+    def validate_floats(cls, value, info):
+        """Validate float fields."""
+        if value is not None:
+            if not isinstance(value, float):
+                raise TypeError(f"{info.field_name} must be a float.")
+            if info.field_name in {"train_size", "val_size"} and not (0.0 < value <= 1.0):
+                raise ValueError(f"{info.field_name} must be between 0 and 1.0.")
+            if info.field_name == "min_delta" and not (0.0 < value <= 0.1):
+                raise ValueError(f"{info.field_name} must be between 0 and 0.1.")
+        return value
+
+    @field_validator("balanced", mode="before")
+    def validate_boolean(cls, value):
+        """Validate the `balanced` field."""
+        if value is not None and not isinstance(value, bool):
+            raise TypeError("balanced must be a boolean.")
+        return value
+
+    @field_validator("path", mode="before")
+    def validate_path(cls, value):
+        """Validate the path field."""
+        if value is not None:
+            if not isinstance(value, str):
+                raise TypeError("path must be a string.")
+            if not os.path.exists(value):
+                raise ValueError(f"The path '{value}' does not exist.")
+            if not (os.path.isfile(value) or os.path.isdir(value)):
+                raise ValueError(f"The path '{value}' is neither a valid file nor a directory.")
+        return value
+
+    class Config:
+        extra = "ignore"  # Ignore fields that are not explicitly declared
