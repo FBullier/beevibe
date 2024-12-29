@@ -77,12 +77,13 @@ class DatasetConfig(BaseModel):
                 raise ValueError(f"{info.field_name} must be between 0 and 0.1.")
             if info.field_name == "lr" and not (0.0 < value):
                 raise ValueError(f"{info.field_name} must be upper than 0.")            
-
         return value
 
     @field_validator("balanced", "multilabel", "verbose", mode="before")
     def validate_boolean(cls, value, info):
         """Validate the boolean fields."""
+        if value is  None :
+            raise TypeError(f"{info.field_name} is a boolean and must not be None.")
         if value is not None and not isinstance(value, bool):
             raise TypeError(f"{info.field_name} must be a boolean.")
         return value
@@ -101,13 +102,15 @@ class DatasetConfig(BaseModel):
 
     @field_validator("device", mode="before")
     def validate_device(cls, value):
-        if value not in ["cpu", "gpu"]:
-            raise ValueError(f"The device must be 'cpu' or 'gpu'. Invalid value: {value}")
+        if value not in ["cuda", "gpu", None]:
+            raise ValueError(f"The device must be 'cpu' or 'cuda'. Invalid value: {value}")
         return value
 
     @model_validator(mode="after")
     def validate_lora_params(cls, values):
         """Ensure LoRA parameters are correctly defined based on `use_lora`."""
+        if values.use_lora is None:
+            raise TypeError(f"use_lora is a boolean and must not be None.")
         if values.use_lora:
             if values.lora_r is None or values.lora_r <= 0:
                 raise ValueError("lora_r must be a positive integer when use_lora is True.")

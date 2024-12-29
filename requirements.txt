@@ -10,3 +10,4 @@ datasets
 seaborn
 matplotlib
 pydantic
+openai==1.54.5

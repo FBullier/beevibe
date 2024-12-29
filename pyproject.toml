@@ -21,7 +21,8 @@ dependencies = [
     "datasets",
     "seaborn",
     "matplotlib",
-    "pydantic"
+    "pydantic",
+    "openai==1.54.5"
 ]
 
 [project.optional-dependencies]

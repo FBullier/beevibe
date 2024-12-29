@@ -117,6 +117,8 @@ class MultiClassTrainer:
 
         if device is None:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            self.device = device
 
         self.model_creator = (
             model_creator if model_creator is not None else self.default_model_creator
@@ -236,29 +238,39 @@ class MultiClassTrainer:
 
             self.logger_info("Using Lora")
 
+            # Get Lora targets from current model
             target_modules = self.__find_target_modules(self.model)
-            self.logger_info("Target modules : ", target_modules)
+            if len(target_modules) == 0:
+                self.release_model()
+                raise ValueError("Lora : no Target modules found in current model")
+            else:    
+                self.logger_info("Target modules : ", target_modules)
 
+            # Set Lora configuration
             lora_config = LoraConfig(
                 task_type=TaskType.SEQ_CLS, 
-                r=8,                        # Rank of low-rank decomposition
-                lora_alpha=32,              # Scaling factor
+                r=self.lora_r,                        # Rank of low-rank decomposition
+                lora_alpha=self.lora_alpha,              # Scaling factor
                 target_modules=target_modules,  # Target modules for LoRA
-                lora_dropout=0.1,           # Dropout for regularization
+                lora_dropout=self.lora_dropout,           # Dropout for regularization
                 bias="none"                 # Do not fine-tune biases
             )
 
+            # Get Peft model from Lora configuration
             self.model = get_peft_model(self.model, lora_config)
 
+            # Add classifier head to train
             for name, param in self.model.named_parameters():
                 if "classifier" in name:  # Matches all layers under the classifier head
                     param.requires_grad = True
 
+            # Display trainable parameters counts
             self.__print_trainable_parameters(self.model)
 
-
+        # Plug Optimizer function
         self.optimizer = self.optimizer_creator(self.model, **self.optimizer_params)
 
+        # Plug Scheduler function
         if self.scheduler_creator:
             self.logger_info("Use scheduler")
             self.scheduler = self.scheduler_creator(

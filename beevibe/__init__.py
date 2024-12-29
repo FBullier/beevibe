@@ -11,9 +11,10 @@ from .core.datasets import TextDatasetMC
 from .core.datasets import TextDatasetML
 from .core.models import HFTokenizer
 from .core.models import HFModelForClassification
-from .core.models import BVSimpleMaskModelForClassification
-from .core.models import BVCustomMaskModelForClassification
+from .core.models import BeeSimpleMaskModelForClassification
+from .core.models import BeeCustomMaskModelForClassification
 from .core.schedulers import AnnealOnPlateau
+from .ai.openai_interface import AIHelper
 
 #from .ai.openai_interface import OpenAIInterface
 #from .utils.logger import setup_logger
@@ -30,7 +31,8 @@ __all__ = [
     "TextDatasetML",
     "HFTokenizer",
     "HFModelForClassification",
-    "BVSimpleMaskModelForClassification",
-    "BVCustomMaskModelForClassification",
+    "BeeSimpleMaskModelForClassification",
+    "BeeCustomMaskModelForClassification",
     "AnnealOnPlateau",
+    "AIHelper"
 ]
