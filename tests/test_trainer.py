@@ -110,3 +110,80 @@ def test_simple_model_gradients(simple_model, tokenizer):
     # Ensure gradients are computed for model parameters
     has_grads = any(param.grad is not None for param in simple_model.parameters())
     assert has_grads
+
+def test_tokenizer_handles_empty_string(tokenizer):
+    text = ""
+    tokens = tokenizer(text, return_tensors="pt")
+    assert "input_ids" in tokens
+    assert tokens["input_ids"].shape[1] == 2  # Should include special tokens
+
+def test_simple_model_invalid_input(simple_model):
+    input_ids = torch.tensor([[101, 102]])  # Shape: [1, 2]
+    attention_mask = torch.tensor([[1]])  # Shape: [1, 1] (mismatched)
+
+    print(f"input_ids shape: {input_ids.shape}")
+    print(f"attention_mask shape: {attention_mask.shape}")
+    
+    # Match the general error message pattern
+    with pytest.raises(ValueError, match="input_ids shape .* and attention_mask shape .* must match."):
+        simple_model(input_ids=input_ids, attention_mask=attention_mask)
+
+def test_custom_model_gradient_flow(custom_model, tokenizer):
+    text = ["Gradient check sentence."]
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+    labels = torch.tensor([0])
+
+    outputs = custom_model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+    loss = torch.nn.functional.cross_entropy(outputs.logits, labels)
+    loss.backward()
+
+    has_gradients = any(param.grad is not None for param in custom_model.parameters())
+    assert has_gradients
+
+def test_simple_model_no_labels(simple_model, tokenizer):
+    text = ["Inference test sentence."]
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+
+    outputs = simple_model(input_ids=input_ids, attention_mask=attention_mask)
+    assert outputs.logits.shape == (1, 2)  # Batch size x num_labels
+
+def test_custom_model_different_batch_sizes(custom_model, tokenizer):
+    text = ["Sentence 1", "Sentence 2", "Sentence 3"]
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+
+    outputs = custom_model(input_ids=input_ids, attention_mask=attention_mask)
+    assert outputs.logits.shape == (3, 2)  # Batch size x num_labels
+
+def test_hf_model_for_classification_with_additional_kwargs():
+    model = HFModelForClassification().from_pretrained("bert-base-uncased", num_labels=3)
+    assert model.config.num_labels == 3
+
+def test_simple_model_with_large_input(simple_model, tokenizer):
+    text = ["This is a test sentence." * 50]  # Large input
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+
+    outputs = simple_model(input_ids=input_ids, attention_mask=attention_mask)
+    assert outputs.logits.shape == (1, 2)  # Batch size x num_labels
+
+def test_custom_model_handles_missing_input(custom_model):
+    input_ids = torch.tensor([[101, 2000, 102]])
+    with pytest.raises(ValueError):
+        custom_model(input_ids=input_ids)
+
+def test_simple_model_with_multiple_labels(simple_model, tokenizer):
+    text = ["Label test sentence."]
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+    labels = torch.tensor([1])
+
+    outputs = simple_model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+    assert outputs.logits.shape == (1, 2)  # Batch size x num_labels

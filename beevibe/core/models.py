@@ -108,9 +108,14 @@ class BeeSimpleMaskModelForClassification(nn.Module):
         Returns:
             transformers.modeling_outputs.SequenceClassifierOutput: Output containing logits.
         """
+        # Validate attention_mask 
         if attention_mask is None:
             raise ValueError("attention_mask is required for the forward pass.")
-                
+
+        # Explicitly validate batch size and sequence length
+        if input_ids.shape != attention_mask.shape:
+            raise ValueError(f"input_ids shape {input_ids.shape} and attention_mask shape {attention_mask.shape} must match.")
+
         outputs = self.base_model(input_ids, attention_mask=attention_mask)
         embeddings = outputs[0][:, 0]  # Extract the CLS token representation
         logits = self.classifier(embeddings)
@@ -207,8 +212,14 @@ class BeeCustomMaskModelForClassification(nn.Module):
             transformers.modeling_outputs.SequenceClassifierOutput: Output containing logits.
         """
 
+        # Validate attention_mask 
         if attention_mask is None:
             raise ValueError("attention_mask is required for the forward pass.")
+
+        # Explicitly validate batch size and sequence length
+        if input_ids.shape != attention_mask.shape:
+            raise ValueError(f"input_ids shape {input_ids.shape} and attention_mask shape {attention_mask.shape} must match.")
+
 
         # Extract features from base model
         outputs = self.base_model(input_ids, attention_mask=attention_mask)
