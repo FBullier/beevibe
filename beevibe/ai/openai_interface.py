@@ -1,40 +1,38 @@
-import openai
 from openai import OpenAI
-import configparser
 import httpx
+import configparser
 
 from beevibe.utils.logger import setup_logger
 
 from typing import Any
 
+class AIHelper:
 
-class AIHelper():
-
-    class __CustomHTTPClient(httpx.Client):
+    class CustomHTTPClient(httpx.Client):
         def __init__(self, *args, **kwargs):
             kwargs.pop("proxy", None)  # Remove the 'proxies' argument if present
             super().__init__(*args, **kwargs)
 
 
-    def __init__(self, config_file='config.ini', verbose=True):
-
+    def __init__(self, config_file: str = "config.ini", verbose: bool = True):
         self.verbose = verbose
         self.logger = self.__init_logger()
 
-        # Load openai key from .ini file
+        # Load OpenAI key from .ini file
         openai_key = self.__load_openai_key(config_file)
 
         # Check if API key is loaded
         if openai_key:
             self.api_key = openai_key
-            self.logger_info("Found an API key")        
+            api_key = self.api_key
+
+            self.logger_info("Found an API key")
         else:
             raise ValueError(f"API key not found in {config_file}")
 
-        # Get API pipe 
         self.client = OpenAI(
-            http_client=self.__CustomHTTPClient(),
-            api_key=self.api_key,
+            http_client=self.CustomHTTPClient(),
+            api_key=api_key,
         )
 
 
@@ -73,6 +71,7 @@ class AIHelper():
         config.read(config_file)
         return config.get("openai", "api_key", fallback=None)
 
+
     def help(self, question: str) -> str:
         """
         Get help about the Beevibe project.
@@ -91,15 +90,20 @@ class AIHelper():
         ]
 
         try:
-            response = openai.ChatCompletion.create(
+
+            response = self.client.chat.completions.create(
                 messages=messages,
                 model="gpt-4o-2024-08-06",
-            )
+            )            
+
+            #response = await openai.ChatCompletion.create(
+            #    model="gpt-4",
+            #    messages=messages,
+            #)
+            
             return response.choices[0].message.content
+        
         except Exception as e:
             self.logger.error(f"Error in OpenAI API call: {e}")
             return "An error occurred while fetching the response."
 
-
-    def analyse(self, results):
-        return("")
