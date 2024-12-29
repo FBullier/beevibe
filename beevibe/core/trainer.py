@@ -244,7 +244,7 @@ class MultiClassTrainer:
                 self.release_model()
                 raise ValueError("Lora : no Target modules found in current model")
             else:    
-                self.logger_info("Target modules : ", target_modules)
+                self.logger_info(f"Target modules : {target_modules}")
 
             # Set Lora configuration
             lora_config = LoraConfig(

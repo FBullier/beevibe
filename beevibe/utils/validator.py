@@ -1,6 +1,6 @@
 import os
 from numpy import ndarray
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 from typing import List, Any, Optional, Union
 
 class DatasetConfig(BaseModel):
@@ -120,6 +120,8 @@ class DatasetConfig(BaseModel):
                 raise ValueError("lora_dropout must be between 0.0 and 1.0 when use_lora is True.")
         return values
 
-    class Config:
-        extra = "ignore"  # Ignore fields that are not explicitly declared
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(extra="ignore", arbitrary_types_allowed=True)
+
+    #class Config:
+    #    extra = "ignore"  # Ignore fields that are not explicitly declared
+    #    arbitrary_types_allowed = True
