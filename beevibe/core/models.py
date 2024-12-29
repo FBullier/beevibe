@@ -92,7 +92,11 @@ class BeeSimpleMaskModelForClassification(nn.Module):
             nn.Linear(128, self.num_labels),
         )
 
-    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, labels: torch.Tensor = None):
+    def forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None, labels: torch.Tensor = None, 
+                inputs_embeds: Optional[torch.FloatTensor] = None, 
+                output_attentions: Optional[bool] = None, 
+                output_hidden_states: Optional[bool] = None, 
+                return_dict: Optional[bool] = None):
         """
         Forward pass for the model.
 
@@ -104,6 +108,9 @@ class BeeSimpleMaskModelForClassification(nn.Module):
         Returns:
             transformers.modeling_outputs.SequenceClassifierOutput: Output containing logits.
         """
+        if attention_mask is None:
+            raise ValueError("attention_mask is required for the forward pass.")
+                
         outputs = self.base_model(input_ids, attention_mask=attention_mask)
         embeddings = outputs[0][:, 0]  # Extract the CLS token representation
         logits = self.classifier(embeddings)
