@@ -7,7 +7,7 @@
 ---
 
 ## 🐝 **About Beevibe**
-Beevibe is a Python package designed to make it easier to train advanced language models, like ModernBert, on text datasets with specific themes and perform accurate inference on new sentences. Beevibe is built to empower developers and researchers with tools that are efficient, intuitive, and scalable.
+Beevibe is a Python package designed to make it easier to train advanced language models on text datasets with specific themes and perform accurate inference on new sentences. Beevibe is built to empower developers and researchers with tools that are efficient, intuitive, and scalable.
 
 Beevibe leverages modern AI features to simplify workflows and enhance user experience. It integrates:
 
