@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
+from transformers import BitsAndBytesConfig
 import transformers
 
 from typing import Optional
@@ -71,7 +72,7 @@ class BeeSimpleMaskModelForClassification(nn.Module):
     A simple model for sequence classification with a linear stack on top of a pretrained transformer.
     """
 
-    def __init__(self, model_name: str, num_labels: int):
+    def __init__(self, model_name: str, num_labels: int, quantization_config: Optional[BitsAndBytesConfig] = None):
         """
         Initializes the SimpleModel class.
 
@@ -82,7 +83,7 @@ class BeeSimpleMaskModelForClassification(nn.Module):
         super(BeeSimpleMaskModelForClassification, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
-        self.base_model = AutoModel.from_pretrained(self.model_name)
+        self.base_model = AutoModel.from_pretrained(self.model_name, quantization_config=quantization_config)
         self.config = self.base_model.config
 
         self.classifier = nn.Sequential(
@@ -127,7 +128,7 @@ class BeeCustomMaskModelForClassification(nn.Module):
     A custom model for sequence classification with a flexible linear stack on top of a pretrained transformer.
     """
 
-    def __init__(self, model_name: str, num_labels: int, layer_configs: list[dict]):
+    def __init__(self, model_name: str, num_labels: int, layer_configs: list[dict], quantization_config: Optional[BitsAndBytesConfig] = None):
         """
         Initializes the CustomModel class.
 
@@ -139,7 +140,7 @@ class BeeCustomMaskModelForClassification(nn.Module):
         super(BeeCustomMaskModelForClassification, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
-        self.base_model = AutoModel.from_pretrained(self.model_name)
+        self.base_model = AutoModel.from_pretrained(self.model_name, quantization_config=quantization_config)
         self.config = self.base_model.config
 
         # Build custom linear stack

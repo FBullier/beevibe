@@ -102,7 +102,7 @@ class DatasetConfig(BaseModel):
 
     @field_validator("device", mode="before")
     def validate_device(cls, value):
-        if value not in ["cuda", "gpu", None]:
+        if value not in ["cuda", "cpu", None]:
             raise ValueError(f"The device must be 'cpu' or 'cuda'. Invalid value: {value}")
         return value
 

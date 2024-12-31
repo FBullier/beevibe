@@ -32,6 +32,8 @@ from typing import List, Optional, Tuple, Callable, Any, Dict
 
 from peft import LoraConfig, TaskType
 from peft import get_peft_model
+from transformers import BitsAndBytesConfig
+
 
 class MultiClassTrainer:
     """
@@ -58,6 +60,11 @@ class MultiClassTrainer:
         lora_r: int = 8,
         lora_alpha: int = 32,
         lora_dropout: float = 0.1,
+        quantization_type=None, 
+        compute_dtype=torch.float16, 
+        quant_type="nf4", 
+        enable_dynamic=False, 
+        use_double_quant=False,
         verbose: bool = True,
     ) -> None:
         """
@@ -77,6 +84,18 @@ class MultiClassTrainer:
             scheduler_creator (Optional[Callable]): Custom function to create the scheduler.
             scheduler_params (Optional[Dict[str, Any]]): Parameters for the scheduler.
             scheduler_needs_loss (bool): Whether the scheduler needs loss information.
+            use_lorac(bool): Use Lora to train the model
+            lora_r (int): Lora rank value.
+            lora_alpha (int): Lora Alpha value.
+            lora_dropout (float): Lora dropout value.
+            quantization_type (str): The type of quantization to use. Options are:
+                                    - "4bit": 4-bit quantization
+                                    - "8bit": 8-bit quantization
+                                    - None: No quantization
+            compute_dtype (torch.dtype): The data type for computation, e.g., torch.float16 or torch.bfloat16.
+            quant_type (str): Quantization type for 4-bit quantization. Options are "nf4" or "fp4".
+            enable_dynamic (bool): Whether to enable dynamic quantization (8-bit only).
+            use_double_quant (bool): Whether to enable double quantization (4-bit only).
             verbose (bool): If True, enables verbose logging.
         """
 
@@ -100,12 +119,27 @@ class MultiClassTrainer:
         self.lr = lr
         self.multilabel = multilabel
 
-        self.use_lora = use_lora
+        # Quantization paramaters
+        if quantization_type is not None:
+            self.quantization_config = self.configure_quantization(quantization_type=quantization_type,
+                                    compute_dtype=compute_dtype, 
+                                    quant_type=quant_type, 
+                                    enable_dynamic=enable_dynamic, 
+                                    use_double_quant=use_double_quant
+                                    )
+        else:
+            self.quantization_config = None            
 
+        # Lora parameters
+        self.use_lora = use_lora
         if not self.use_lora:
             self.lora_r = None
             self.lora_alpha = None
             self.lora_dropout = None
+        else:
+            self.lora_r = lora_r
+            self.lora_alpha = lora_alpha
+            self.lora_dropout = lora_dropout
 
         self.verbose = verbose
 
@@ -141,6 +175,46 @@ class MultiClassTrainer:
         self.logger = self.__init_logger()
 
         self.logger_info(f"Device : {self.device}")
+
+    def configure_quantization(self, quantization_type=None, compute_dtype=torch.float16, quant_type="nf4", enable_dynamic=False, use_double_quant=False):
+        """
+        Configure the quantization settings for model loading.
+
+        Args:
+            quantization_type (str): The type of quantization to use. Options are:
+                                    - "4bit": 4-bit quantization
+                                    - "8bit": 8-bit quantization
+                                    - None: No quantization
+            compute_dtype (torch.dtype): The data type for computation, e.g., torch.float16 or torch.bfloat16.
+            quant_type (str): Quantization type for 4-bit quantization. Options are "nf4" or "fp4".
+            enable_dynamic (bool): Whether to enable dynamic quantization (8-bit only).
+            use_double_quant (bool): Whether to enable double quantization (4-bit only).
+
+        Returns:
+            BitsAndBytesConfig: Configuration object for quantization.
+
+        Raises:
+            ValueError: If unsupported parameters are explicitly set for the chosen quantization type.
+        """
+        if quantization_type == "4bit":
+            return BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type=quant_type,  # Options: "nf4" or "fp4"
+                bnb_4bit_compute_dtype=compute_dtype,
+                bnb_4bit_use_double_quant=use_double_quant  # Enable double quantization (4-bit only)
+            )
+        elif quantization_type == "8bit":
+            if use_double_quant:
+                raise ValueError("'use_double_quant' is not supported for 8-bit quantization.")
+            return BitsAndBytesConfig(
+                load_in_8bit=True,
+                bnb_8bit_compute_dtype=compute_dtype,
+                bnb_8bit_enable_dynamic=enable_dynamic  # Enable dynamic quantization (8-bit only)
+            )
+        elif quantization_type is None:
+            return None  # No quantization
+        else:
+            raise ValueError("Unsupported quantization_type. Choose '4bit', '8bit', or None.")
 
     def logger_info(self, message: str) -> None:
         """
@@ -231,7 +305,7 @@ class MultiClassTrainer:
         """
         Initialize the model, optimizer, and scheduler for training.
         """
-        self.model = self.model_creator(self.model_name, self.num_classes)
+        self.model = self.model_creator(self.model_name, self.num_classes, self.quantization_config)
         self.model = self.model.to(self.device)
 
         if self.use_lora:
