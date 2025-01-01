@@ -1,4 +1,5 @@
 import os
+import torch
 from numpy import ndarray
 from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 from typing import List, Any, Optional, Union
@@ -34,6 +35,12 @@ class DatasetConfig(BaseModel):
     lora_r: Optional[int] = 8
     lora_alpha: Optional[int] = 32
     lora_dropout: Optional[float] = 0.1
+
+    quantization_type: Optional[str] = None
+    compute_dtype: Optional[torch.dtype] = torch.float16
+    quant_type: Optional[str] = "nf4"
+    enable_dynamic: Optional[bool] = False
+    use_double_quant: Optional[bool] = False
 
     @field_validator("texts", mode="before")
     def validate_texts(cls, value, info):

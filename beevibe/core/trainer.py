@@ -84,7 +84,7 @@ class MultiClassTrainer:
             scheduler_creator (Optional[Callable]): Custom function to create the scheduler.
             scheduler_params (Optional[Dict[str, Any]]): Parameters for the scheduler.
             scheduler_needs_loss (bool): Whether the scheduler needs loss information.
-            use_lorac(bool): Use Lora to train the model
+            use_lora(bool): Use Lora to train the model
             lora_r (int): Lora rank value.
             lora_alpha (int): Lora Alpha value.
             lora_dropout (float): Lora dropout value.
@@ -110,7 +110,12 @@ class MultiClassTrainer:
                           use_lora=use_lora,
                           lora_r=lora_r,
                           lora_alpha=lora_alpha,
-                          lora_dropout=lora_dropout
+                          lora_dropout=lora_dropout,
+                          quantization_type=None, 
+                          compute_dtype=torch.float16, 
+                          quant_type="nf4", 
+                          enable_dynamic=False, 
+                          use_double_quant=False
                           )
 
         self.model_name = model_name
