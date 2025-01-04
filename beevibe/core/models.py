@@ -72,7 +72,7 @@ class BeeSimpleMaskModelForClassification(nn.Module):
     A simple model for sequence classification with a linear stack on top of a pretrained transformer.
     """
 
-    def __init__(self, model_name: str, num_labels: int, quantization_config: Optional[BitsAndBytesConfig] = None):
+    def __init__(self, model_name: str, num_labels: int):
         """
         Initializes the SimpleModel class.
 
@@ -83,6 +83,9 @@ class BeeSimpleMaskModelForClassification(nn.Module):
         super(BeeSimpleMaskModelForClassification, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
+
+    def create(self, quantization_config: Optional[BitsAndBytesConfig] = None ):
+
         self.base_model = AutoModel.from_pretrained(self.model_name, quantization_config=quantization_config)
         self.config = self.base_model.config
 
@@ -122,6 +125,7 @@ class BeeSimpleMaskModelForClassification(nn.Module):
         logits = self.classifier(embeddings)
 
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
+
 
 class BeeCustomMaskModelForClassification(nn.Module):
     """

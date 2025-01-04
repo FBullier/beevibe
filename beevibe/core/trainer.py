@@ -45,6 +45,9 @@ class MultiClassTrainer:
         self,
         num_classes: int = 3,
         classes_names: List[str] = [],
+        model=None,
+        optimizer=None,
+        scheduler=None,
         model_name: str = "camembert-base",
         max_len: int = 128,
         lr: float = 1e-5,
@@ -73,6 +76,9 @@ class MultiClassTrainer:
         Args:
             num_classes (int): Number of classes for classification.
             classes_names (List[str]): Names of the classes. If empty, generates default names.
+            model : model to use for training (str or Bee model class)
+            optimizer_class : Optimizer class of the Model
+            scheduler_class : Scheduler class of the Model
             model_name (str): Name of the model to use (e.g., Hugging Face model name).
             max_len (int): Maximum token length for the tokenizer.
             lr (float): Learning rate for the optimizer.
@@ -135,6 +141,8 @@ class MultiClassTrainer:
         else:
             self.quantization_config = None            
 
+
+
         # Lora parameters
         self.use_lora = use_lora
         if not self.use_lora:
@@ -159,19 +167,30 @@ class MultiClassTrainer:
         else:
             self.device = device
 
-        self.model_creator = (
-            model_creator if model_creator is not None else self.default_model_creator
-        )
-        self.optimizer_creator = (
-            optimizer_creator
-            if optimizer_creator is not None
-            else self.default_optimizer_creator
-        )
-        self.scheduler_creator = (
-            scheduler_creator
-            if scheduler_creator is not None
-            else self.default_scheduler_creator
-        )
+        #self.model_creator = (
+        #    model_creator if model_creator is not None else self.default_model_creator
+        #)
+
+        # Instanciate model
+        self.model = model(self.model_name,
+                           self.num_labels )
+
+
+        self.optimizer_class = optimizer
+        #self.optimizer_creator = (
+        #    optimizer_creator
+        #    if optimizer_creator is not None
+        #    else self.default_optimizer_creator
+        #)
+
+        self.scheduler_class = scheduler
+        #self.scheduler_creator = (
+        #    scheduler_creator
+        #    if scheduler_creator is not None
+        #    else self.default_scheduler_creator
+        #)
+
+        
         self.scheduler_params = scheduler_params if scheduler_params else {}
         self.optimizer_params = optimizer_params if optimizer_params else {"lr": lr}
 
@@ -231,6 +250,7 @@ class MultiClassTrainer:
         if self.verbose:
             self.logger.info(message)
 
+    ## NOT USED ANYMORE 
     def default_model_creator(self, model_name: str, num_classes: int) -> nn.Module:
         """
         Default function to create a classification model using a pre-trained Hugging Face model.
@@ -243,9 +263,26 @@ class MultiClassTrainer:
             nn.Module: A classification model.
         """
         return HFModelForClassification().from_pretrained(
-            model_name, num_labels=num_classes
+            model_name=model_name, num_labels=num_classes
         )
 
+    def optimizer_creator(self, model: nn.Module, **params: Any) -> torch.optim.Optimizer:
+        """
+        Default function to create an Adam optimizer.
+
+        Args:
+            model (nn.Module): The model for which to create the optimizer.
+            **params: Additional parameters for the optimizer.
+
+        Returns:
+            torch.optim.Optimizer: An Adam optimizer.
+        """
+        self.logger_info("Call optimizer :")
+        self.logger_info(f" - lr:{params.get('lr', 1e-5)}")
+
+        return Adam(model.parameters(), lr=params.get("lr", 1e-5))
+
+    ## NOT USED ANYMORE
     def default_optimizer_creator(self, model: nn.Module, **params: Any) -> torch.optim.Optimizer:
         """
         Default function to create an Adam optimizer.
@@ -262,6 +299,7 @@ class MultiClassTrainer:
 
         return Adam(model.parameters(), lr=params.get("lr", 1e-5))
 
+    ## NOT USED ANYMORE
     def default_scheduler_creator(self, optimizer: torch.optim.Optimizer, **params: Any) -> Any:
         """
         Default function to create a learning rate scheduler.
@@ -310,7 +348,11 @@ class MultiClassTrainer:
         """
         Initialize the model, optimizer, and scheduler for training.
         """
-        self.model = self.model_creator(self.model_name, self.num_classes, self.quantization_config)
+
+        #self.model = self.model_creator(self.model_name, self.num_classes, self.quantization_config)
+        
+        # <**> Tester si l'objet est vide et si le name est ?
+        self.model.create(self.model_name, self.num_classes)
         self.model = self.model.to(self.device)
 
         if self.use_lora:
@@ -347,14 +389,15 @@ class MultiClassTrainer:
             self.__print_trainable_parameters(self.model)
 
         # Plug Optimizer function
-        self.optimizer = self.optimizer_creator(self.model, **self.optimizer_params)
+        #self.optimizer = self.optimizer_creator(self.model, **self.optimizer_params)
+        self.optimizer = self.optimizer_creator(self.optimizer_class, self.model, **self.optimizer_params)
 
         # Plug Scheduler function
         if self.scheduler_creator:
             self.logger_info("Use scheduler")
-            self.scheduler = self.scheduler_creator(
-                self.optimizer, **self.scheduler_params
-            )
+            #self.scheduler = self.scheduler_creator(self.optimizer, **self.scheduler_params)
+            self.scheduler = self.scheduler_creator(self.scheduler, self.optimizer, **self.scheduler_params)
+
         else:
             self.logger_info("Don't use scheduler")
             self.scheduler = None
