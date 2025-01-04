@@ -67,7 +67,17 @@ class HFModelForClassification:
             **kwargs
         )
 
-class BeeSimpleMaskModelForClassification(nn.Module):
+
+class BeeBaseModel(nn.Module):
+
+    def __init__(self):
+        super(BeeBaseModel, self).__init__()
+
+    def from_pretrained(self, quantization_config: Optional[BitsAndBytesConfig] = None ):
+        return
+
+
+class BeeSimpleMaskModelForClassification(BeeBaseModel):
     """
     A simple model for sequence classification with a linear stack on top of a pretrained transformer.
     """
@@ -84,7 +94,7 @@ class BeeSimpleMaskModelForClassification(nn.Module):
         self.model_name = model_name
         self.num_labels = num_labels
 
-    def create(self, quantization_config: Optional[BitsAndBytesConfig] = None ):
+    def from_pretrained(self, quantization_config: Optional[BitsAndBytesConfig] = None ):
 
         self.base_model = AutoModel.from_pretrained(self.model_name, quantization_config=quantization_config)
         self.config = self.base_model.config

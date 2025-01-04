@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from beevibe.core.datasets import TextDatasetML, TextDatasetMC
-from beevibe.core.models import HFTokenizer, HFModelForClassification
+from beevibe.core.models import HFTokenizer, HFModelForClassification, BeeBaseModel
 from beevibe.core.earlystopping import EarlyStopping
 from beevibe.utils.logger import setup_logger
 from beevibe.utils.validator import DatasetConfig
@@ -46,8 +46,8 @@ class MultiClassTrainer:
         num_classes: int = 3,
         classes_names: List[str] = [],
         model=None,
-        optimizer=None,
-        scheduler=None,
+        optimizer_class=None,
+        scheduler_class=None,
         model_name: str = "camembert-base",
         max_len: int = 128,
         lr: float = 1e-5,
@@ -171,33 +171,41 @@ class MultiClassTrainer:
         #    model_creator if model_creator is not None else self.default_model_creator
         #)
 
-        # Instanciate model
-        self.model = model(self.model_name,
-                           self.num_labels )
-
-
-        self.optimizer_class = optimizer
         #self.optimizer_creator = (
         #    optimizer_creator
         #    if optimizer_creator is not None
         #    else self.default_optimizer_creator
         #)
 
-        self.scheduler_class = scheduler
         #self.scheduler_creator = (
         #    scheduler_creator
         #    if scheduler_creator is not None
         #    else self.default_scheduler_creator
         #)
 
-        
-        self.scheduler_params = scheduler_params if scheduler_params else {}
+        # Create the model structure
+        if isinstance(model, BeeBaseModel):
+            self.model = model
+        elif isinstance(model, str):
+            
+            # Create an HF Model
+            self.model = model
+        else:
+            raise("model must be a beemodel or a string containing the model name ex. Bert")
+
+        # Get Optimizer class and parameters (set default to Adam)
+        self.optimizer_class = optimizer_class if optimizer_class else Adam
         self.optimizer_params = optimizer_params if optimizer_params else {"lr": lr}
 
+        # Get Schedumer class and parameters (set default to None)
+        self.scheduler_class = scheduler_class
+        self.scheduler_params = scheduler_params if scheduler_params else {}
         self.scheduler_needs_loss = scheduler_needs_loss
 
+        # Init logger 
         self.logger = self.__init_logger()
 
+        # Display the working Device
         self.logger_info(f"Device : {self.device}")
 
     def configure_quantization(self, quantization_type=None, compute_dtype=torch.float16, quant_type="nf4", enable_dynamic=False, use_double_quant=False):
@@ -396,7 +404,7 @@ class MultiClassTrainer:
         if self.scheduler_creator:
             self.logger_info("Use scheduler")
             #self.scheduler = self.scheduler_creator(self.optimizer, **self.scheduler_params)
-            self.scheduler = self.scheduler_creator(self.scheduler, self.optimizer, **self.scheduler_params)
+            self.scheduler = self.scheduler_creator(self.scheduler_class, self.optimizer, **self.scheduler_params)
 
         else:
             self.logger_info("Don't use scheduler")
