@@ -94,15 +94,15 @@ class AIHelper:
             response = self.client.chat.completions.create(
                 messages=messages,
                 model="gpt-4o-2024-08-06",
-            )            
+            )
 
             #response = await openai.ChatCompletion.create(
             #    model="gpt-4",
             #    messages=messages,
             #)
-            
+
             return response.choices[0].message.content
-        
+
         except Exception as e:
             self.logger.error(f"Error in OpenAI API call: {e}")
             return "An error occurred while fetching the response."

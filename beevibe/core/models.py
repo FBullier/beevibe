@@ -108,10 +108,10 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
             nn.Linear(128, self.num_labels),
         )
 
-    def forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None, labels: torch.Tensor = None, 
-                inputs_embeds: Optional[torch.FloatTensor] = None, 
-                output_attentions: Optional[bool] = None, 
-                output_hidden_states: Optional[bool] = None, 
+    def forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None, labels: torch.Tensor = None,
+                inputs_embeds: Optional[torch.FloatTensor] = None,
+                output_attentions: Optional[bool] = None,
+                output_hidden_states: Optional[bool] = None,
                 return_dict: Optional[bool] = None):
         """
         Forward pass for the model.
@@ -125,7 +125,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
             transformers.modeling_outputs.SequenceClassifierOutput: Output containing logits.
         """
 
-        # Validate attention_mask 
+        # Validate attention_mask
         if attention_mask is None:
             raise ValueError("attention_mask is required for the forward pass.")
 
@@ -217,10 +217,10 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
 
         return nn.Sequential(*layers)
 
-    def forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None, labels: torch.Tensor = None, 
-                inputs_embeds: Optional[torch.FloatTensor] = None, 
-                output_attentions: Optional[bool] = None, 
-                output_hidden_states: Optional[bool] = None, 
+    def forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None, labels: torch.Tensor = None,
+                inputs_embeds: Optional[torch.FloatTensor] = None,
+                output_attentions: Optional[bool] = None,
+                output_hidden_states: Optional[bool] = None,
                 return_dict: Optional[bool] = None):
         """
         Forward pass for the model.
@@ -234,7 +234,7 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
             transformers.modeling_outputs.SequenceClassifierOutput: Output containing logits.
         """
 
-        # Validate attention_mask 
+        # Validate attention_mask
         if attention_mask is None:
             raise ValueError("attention_mask is required for the forward pass.")
 

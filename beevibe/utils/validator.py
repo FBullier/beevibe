@@ -83,7 +83,7 @@ class DatasetConfig(BaseModel):
             if info.field_name == "min_delta" and not (0.0 < value <= 0.1):
                 raise ValueError(f"{info.field_name} must be between 0 and 0.1.")
             if info.field_name == "lr" and not (0.0 < value):
-                raise ValueError(f"{info.field_name} must be upper than 0.")            
+                raise ValueError(f"{info.field_name} must be upper than 0.")
         return value
 
     @field_validator("balanced", "multilabel", "verbose", mode="before")
@@ -117,7 +117,7 @@ class DatasetConfig(BaseModel):
     def validate_lora_params(cls, values):
         """Ensure LoRA parameters are correctly defined based on `use_lora`."""
         if values.use_lora is None:
-            raise TypeError(f"use_lora is a boolean and must not be None.")
+            raise TypeError("use_lora is a boolean and must not be None.")
         if values.use_lora:
             if values.lora_r is None or values.lora_r <= 0:
                 raise ValueError("lora_r must be a positive integer when use_lora is True.")

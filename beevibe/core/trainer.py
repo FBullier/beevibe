@@ -28,7 +28,7 @@ from beevibe.core.earlystopping import EarlyStopping
 from beevibe.utils.logger import setup_logger
 from beevibe.utils.validator import DatasetConfig
 
-from typing import List, Optional, Tuple, Callable, Any, Dict
+from typing import List, Optional, Tuple, Any, Dict
 
 from peft import LoraConfig, TaskType
 from peft import get_peft_model
@@ -59,10 +59,10 @@ class MultiClassTrainer:
         lora_r: int = 8,
         lora_alpha: int = 32,
         lora_dropout: float = 0.1,
-        quantization_type=None, 
-        compute_dtype=torch.float16, 
-        quant_type="nf4", 
-        enable_dynamic=False, 
+        quantization_type=None,
+        compute_dtype=torch.float16,
+        quant_type="nf4",
+        enable_dynamic=False,
         use_double_quant=False,
         verbose: bool = True,
     ) -> None:
@@ -79,10 +79,7 @@ class MultiClassTrainer:
             lr (float): Learning rate for the optimizer.
             multilabel (bool): Whether the task is multi-label classification.
             device (Optional[str]): Device to use (e.g., 'cuda' or 'cpu'). If None, defaults to CUDA if available.
-            model_creator (Optional[Callable]): Custom function to create the model.
-            optimizer_creator (Optional[Callable]): Custom function to create the optimizer.
             optimizer_params (Optional[Dict[str, Any]]): Parameters for the optimizer.
-            scheduler_creator (Optional[Callable]): Custom function to create the scheduler.
             scheduler_params (Optional[Dict[str, Any]]): Parameters for the scheduler.
             scheduler_needs_loss (bool): Whether the scheduler needs loss information.
             use_lora(bool): Use Lora to train the model
@@ -100,7 +97,7 @@ class MultiClassTrainer:
             verbose (bool): If True, enables verbose logging.
         """
 
-        _ = DatasetConfig(num_classes=num_classes, 
+        _ = DatasetConfig(num_classes=num_classes,
                           classes_names=classes_names,
                           max_len=max_len,
                           lr=lr,
@@ -111,10 +108,10 @@ class MultiClassTrainer:
                           lora_r=lora_r,
                           lora_alpha=lora_alpha,
                           lora_dropout=lora_dropout,
-                          quantization_type=None, 
-                          compute_dtype=torch.float16, 
-                          quant_type="nf4", 
-                          enable_dynamic=False, 
+                          quantization_type=None,
+                          compute_dtype=torch.float16,
+                          quant_type="nf4",
+                          enable_dynamic=False,
                           use_double_quant=False
                           )
 
@@ -126,13 +123,13 @@ class MultiClassTrainer:
         # Quantization paramaters
         if quantization_type is not None:
             self.quantization_config = self.configure_quantization(quantization_type=quantization_type,
-                                    compute_dtype=compute_dtype, 
-                                    quant_type=quant_type, 
-                                    enable_dynamic=enable_dynamic, 
+                                    compute_dtype=compute_dtype,
+                                    quant_type=quant_type,
+                                    enable_dynamic=enable_dynamic,
                                     use_double_quant=use_double_quant
                                     )
         else:
-            self.quantization_config = None            
+            self.quantization_config = None
 
         # Lora parameters
         self.use_lora = use_lora
@@ -172,11 +169,11 @@ class MultiClassTrainer:
         self.optimizer_params = optimizer_params
 
         # Get Schedumer class and parameters (set default to ReduceLROnPlateau)
-        self.scheduler_class = scheduler_class 
-        self.scheduler_params = scheduler_params 
+        self.scheduler_class = scheduler_class
+        self.scheduler_params = scheduler_params
         self.scheduler_needs_loss = scheduler_needs_loss
 
-        # Init logger 
+        # Init logger
         self.logger = self.__init_logger()
 
         # Display the working Device
@@ -232,7 +229,7 @@ class MultiClassTrainer:
         if self.verbose:
             self.logger.info(message)
 
-    ## NOT USED ANYMORE 
+    ## NOT USED ANYMORE
     def default_model_creator(self, model_name: str, num_classes: int) -> nn.Module:
         """
         Default function to create a classification model using a pre-trained Hugging Face model.
@@ -262,7 +259,7 @@ class MultiClassTrainer:
         """
         self.logger_info("Use optimizer : " + optimizer_class.__name__)
         self.logger_info(f" - {params}")
-        
+
         params["params"] = model.parameters()
 
         return optimizer_class(**params)
@@ -358,7 +355,7 @@ class MultiClassTrainer:
             self.model.from_pretrained(quantization_config=self.quantization_config)
         else :
             self.model = None
-            self.model = HFModelForClassification.from_pretrained(model_name=self.model_name, 
+            self.model = HFModelForClassification.from_pretrained(model_name=self.model_name,
                                                                   num_labels=self.num_classes,
                                                                     quantization_config=self.quantization_config)
 
@@ -378,12 +375,12 @@ class MultiClassTrainer:
             if len(target_modules) == 0:
                 self.release_model()
                 raise ValueError("Lora : no Target modules found in current model")
-            else:    
+            else:
                 self.logger_info(f"Target modules : {target_modules}")
 
             # Set Lora configuration
             lora_config = LoraConfig(
-                task_type=TaskType.SEQ_CLS, 
+                task_type=TaskType.SEQ_CLS,
                 r=self.lora_r,                        # Rank of low-rank decomposition
                 lora_alpha=self.lora_alpha,              # Scaling factor
                 target_modules=target_modules,  # Target modules for LoRA
@@ -440,7 +437,7 @@ class MultiClassTrainer:
         _ = DatasetConfig(
             seed=seed
             )
-        
+
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
@@ -946,7 +943,7 @@ class MultiClassTrainer:
         """
 
         _ = DatasetConfig(
-            texts=texts, 
+            texts=texts,
             labels=labels,
             train_size=train_size,
             num_epochs=num_epochs,
@@ -1066,7 +1063,7 @@ class MultiClassTrainer:
         """
 
         _ = DatasetConfig(
-            texts=texts, 
+            texts=texts,
             max_len=max_len
             )
 
@@ -1119,7 +1116,7 @@ class MultiClassTrainer:
         """
 
         _ = DatasetConfig(
-            texts=texts, 
+            texts=texts,
             labels=labels,
             val_size=val_size,
             num_epochs=num_epochs,
@@ -1205,7 +1202,7 @@ class MultiClassTrainer:
         """
 
         _ = DatasetConfig(
-            texts=texts, 
+            texts=texts,
             labels=labels,
             n_splits=n_splits,
             num_epochs=num_epochs,

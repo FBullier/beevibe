@@ -1,6 +1,5 @@
 import pytest
 import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from beevibe import HFTokenizer, HFModelForClassification, BeeSimpleMaskModelForClassification, BeeCustomMaskModelForClassification
 
 @pytest.fixture
@@ -56,7 +55,7 @@ def test_custom_model_layer_config():
         {"input_size": 128, "output_size": 2},
     ]
     model = BeeCustomMaskModelForClassification("bert-base-uncased", num_labels=2, layer_configs=layer_configs)
-    
+
     # Count expected layers (linear + optional components like activation/dropout)
     expected_layers = sum(1 + bool(config.get("activation")) + bool(config.get("dropout_rate")) for config in layer_configs)
 
@@ -123,7 +122,7 @@ def test_simple_model_invalid_input(simple_model):
 
     print(f"input_ids shape: {input_ids.shape}")
     print(f"attention_mask shape: {attention_mask.shape}")
-    
+
     # Match the general error message pattern
     with pytest.raises(ValueError, match="input_ids shape .* and attention_mask shape .* must match."):
         simple_model(input_ids=input_ids, attention_mask=attention_mask)
