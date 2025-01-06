@@ -167,31 +167,14 @@ class MultiClassTrainer:
         else:
             self.device = device
 
-        #self.model_creator = (
-        #    model_creator if model_creator is not None else self.default_model_creator
-        #)
-
-        #self.optimizer_creator = (
-        #    optimizer_creator
-        #    if optimizer_creator is not None
-        #    else self.default_optimizer_creator
-        #)
-
-        #self.scheduler_creator = (
-        #    scheduler_creator
-        #    if scheduler_creator is not None
-        #    else self.default_scheduler_creator
-        #)
-
         # Create the model structure
         if isinstance(model, BeeBaseModel):
             self.model = model
         elif isinstance(model, str):
-            
-            # Create an HF Model
-            self.model = model
+            self.model_name = model
+            self.model = self.model_name
         else:
-            raise("model must be a beemodel or a string containing the model name ex. Bert")
+            raise("model must be a beemodel or a string containing the model name ex. ModernBert")
 
         # Get Optimizer class and parameters (set default to Adam)
         self.optimizer_class = optimizer_class if optimizer_class else Adam
@@ -286,8 +269,8 @@ class MultiClassTrainer:
         Returns:
             torch.optim.Optimizer: An Adam optimizer.
         """
-        self.logger_info("Call optimizer : " + optimizer_class.__name__)
-        self.logger_info(f" - lr:{params.get('lr', 1e-5)}")
+        self.logger_info("Use optimizer : " + optimizer_class.__name__)
+        self.logger_info(f" - {params}")
         
         params["params"] = model.parameters()
 
@@ -323,7 +306,8 @@ class MultiClassTrainer:
         Returns:
             Any: A ReduceLROnPlateau scheduler.
         """
-        self.logger_info("Call scheduler : " + scheduler_class.__name__)
+        self.logger_info("Use scheduler : " + scheduler_class.__name__)
+        self.logger_info(f" - {params}")
 
         params["optimizer"] = optimizer
         return scheduler_class(**params)
@@ -378,12 +362,14 @@ class MultiClassTrainer:
         Initialize the model, optimizer, and scheduler for training.
         """
 
-        #self.model = self.model_creator(self.model_name, self.num_classes, self.quantization_config)
-        
-        # <**> Tester si l'objet est vide et si le name est ?
-
         # Reload the model from scratch
-        self.model.from_pretrained(quantization_config=self.quantization_config)
+        if isinstance(self.model, BeeBaseModel):
+            self.model.from_pretrained(quantization_config=self.quantization_config)
+        else :
+            self.model = None
+            self.model = HFModelForClassification.from_pretrained(model_name=self.model_name, 
+                                                                  num_labels=self.num_classes,
+                                                                    quantization_config=self.quantization_config)
 
         # Free GPU memory
         if self.device.startswith("cuda"):
@@ -426,17 +412,13 @@ class MultiClassTrainer:
             self.__print_trainable_parameters(self.model)
 
         # Plug Optimizer function
-        #self.optimizer = self.optimizer_creator(self.model, **self.optimizer_params)
         self.optimizer = self.optimizer_creator(self.optimizer_class, self.model, **self.optimizer_params)
 
         # Plug Scheduler function
         if self.scheduler_class:
-            self.logger_info("Use scheduler")
-            #self.scheduler = self.scheduler_creator(self.optimizer, **self.scheduler_params)
             self.scheduler = self.scheduler_creator(self.scheduler_class, self.optimizer, **self.scheduler_params)
-
         else:
-            self.logger_info("Don't use scheduler")
+            self.logger_info("No scheduler used")
             self.scheduler = None
 
     def __init_logger(self) -> Any:
