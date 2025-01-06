@@ -197,9 +197,9 @@ class MultiClassTrainer:
         self.optimizer_class = optimizer_class if optimizer_class else Adam
         self.optimizer_params = optimizer_params if optimizer_params else {"lr": lr}
 
-        # Get Schedumer class and parameters (set default to None)
-        self.scheduler_class = scheduler_class
-        self.scheduler_params = scheduler_params if scheduler_params else {}
+        # Get Schedumer class and parameters (set default to ReduceLROnPlateau)
+        self.scheduler_class = scheduler_class if scheduler_class else ReduceLROnPlateau
+        self.scheduler_params = scheduler_params if scheduler_params else {"mode":"min", "factor":0.8, "patience":2}
         self.scheduler_needs_loss = scheduler_needs_loss
 
         # Init logger 
@@ -274,7 +274,8 @@ class MultiClassTrainer:
             model_name=model_name, num_labels=num_classes
         )
 
-    def optimizer_creator(self, model: nn.Module, **params: Any) -> torch.optim.Optimizer:
+    ## NEW Optimizer function
+    def optimizer_creator(self, optimizer_class, model: nn.Module, **params: Any) -> torch.optim.Optimizer:
         """
         Default function to create an Adam optimizer.
 
@@ -285,10 +286,12 @@ class MultiClassTrainer:
         Returns:
             torch.optim.Optimizer: An Adam optimizer.
         """
-        self.logger_info("Call optimizer :")
+        self.logger_info("Call optimizer : " + optimizer_class.__name__)
         self.logger_info(f" - lr:{params.get('lr', 1e-5)}")
+        
+        params["params"] = model.parameters()
 
-        return Adam(model.parameters(), lr=params.get("lr", 1e-5))
+        return optimizer_class(**params)
 
     ## NOT USED ANYMORE
     def default_optimizer_creator(self, model: nn.Module, **params: Any) -> torch.optim.Optimizer:
@@ -306,6 +309,24 @@ class MultiClassTrainer:
         self.logger_info(f" - lr:{params.get('lr', 1e-5)}")
 
         return Adam(model.parameters(), lr=params.get("lr", 1e-5))
+
+
+    ## NEW Scheduler function
+    def scheduler_creator(self, scheduler_class, optimizer: torch.optim.Optimizer, **params: Any) -> Any:
+        """
+        Default function to create a learning rate scheduler.
+
+        Args:
+            optimizer (torch.optim.Optimizer): The optimizer for which to create the scheduler.
+            **params: Additional parameters for the scheduler.
+
+        Returns:
+            Any: A ReduceLROnPlateau scheduler.
+        """
+        self.logger_info("Call scheduler : " + scheduler_class.__name__)
+
+        params["optimizer"] = optimizer
+        return scheduler_class(**params)
 
     ## NOT USED ANYMORE
     def default_scheduler_creator(self, optimizer: torch.optim.Optimizer, **params: Any) -> Any:
@@ -360,7 +381,15 @@ class MultiClassTrainer:
         #self.model = self.model_creator(self.model_name, self.num_classes, self.quantization_config)
         
         # <**> Tester si l'objet est vide et si le name est ?
-        self.model.create(self.model_name, self.num_classes)
+
+        # Reload the model from scratch
+        self.model.from_pretrained(quantization_config=self.quantization_config)
+
+        # Free GPU memory
+        if self.device.startswith("cuda"):
+            torch.cuda.empty_cache()
+
+        # Load model to device if it is not
         self.model = self.model.to(self.device)
 
         if self.use_lora:
@@ -401,7 +430,7 @@ class MultiClassTrainer:
         self.optimizer = self.optimizer_creator(self.optimizer_class, self.model, **self.optimizer_params)
 
         # Plug Scheduler function
-        if self.scheduler_creator:
+        if self.scheduler_class:
             self.logger_info("Use scheduler")
             #self.scheduler = self.scheduler_creator(self.optimizer, **self.scheduler_params)
             self.scheduler = self.scheduler_creator(self.scheduler_class, self.optimizer, **self.scheduler_params)
