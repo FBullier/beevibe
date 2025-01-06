@@ -2,7 +2,7 @@ import random
 import pandas as pd
 import numpy as np
 import time
-import gc
+import gc, json
 
 import torch
 import torch.nn as nn
@@ -121,6 +121,17 @@ class MultiClassTrainer:
         self.max_len = max_len
         self.lr = lr
         self.multilabel = multilabel
+
+        # Tokenizer preprocessing configuration
+        self.preprocessing_config = {
+            "add_special_tokens": True,
+            "truncation": True,
+            "padding": "max_length",
+            "max_length": self.max_len,
+            "return_token_type_ids": False,
+            "return_attention_mask": True,
+            "return_tensors": "pt",
+        }
 
         # Quantization paramaters
         if quantization_type is not None:
@@ -1013,8 +1024,13 @@ class MultiClassTrainer:
         #    path=path
         #    )
 
+        self.tokenizer.save_pretrained(path)
+        with open(f"{path}/preprocessing_config.json", "w") as f:
+            json.dump(self.preprocessing_config, f)
+
         merged_model = self.model.merge_and_unload()
         merged_model.save_model_safetensors(path)
+
 
     def save_adaptater(self, path: str) -> None:
         """
@@ -1035,7 +1051,7 @@ class MultiClassTrainer:
             self.logger_info("The adapter does not appear to be utilized during model training.")
 
 
-    def __preprocess(self, raw_reviews: List[str], max_len: int = 128) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __preprocess(self, raw_reviews: List[str]) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Preprocess input text samples for the model.
 
@@ -1049,13 +1065,7 @@ class MultiClassTrainer:
 
         encoded_batch = self.tokenizer(
             raw_reviews,
-            add_special_tokens=True,
-            truncation=True,
-            padding="max_length",
-            max_length=max_len,
-            return_token_type_ids=False,
-            return_attention_mask=True,
-            return_tensors="pt",
+            **self.preprocessing_config
         )
 
         return encoded_batch["input_ids"], encoded_batch["attention_mask"]

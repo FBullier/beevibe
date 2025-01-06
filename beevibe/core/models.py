@@ -145,6 +145,33 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
 
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
 
+    def predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False):
+        """
+        Perform prediction on input data.
+
+        Args:
+            input_ids (torch.Tensor): Tokenized input IDs.
+            attention_mask (torch.Tensor): Attention mask.
+            return_probabilities (bool): If True, return probabilities instead of class labels.
+
+        Returns:
+            torch.Tensor: Predicted class labels or probabilities.
+        """
+        self.eval()  # Set model to evaluation mode
+        with torch.no_grad():  # Disable gradient computation
+            # Forward pass
+            outputs = self.forward(input_ids=input_ids, attention_mask=attention_mask)
+            logits = outputs.logits  # Extract logits from model output
+
+            if return_probabilities:
+                # Convert logits to probabilities using softmax
+                probabilities = softmax(logits, dim=-1)
+                return probabilities
+            else:
+                # Convert logits to class labels using argmax
+                predictions = torch.argmax(logits, dim=-1)
+                return predictions
+
     def save_model_safetensors(self, save_directory: str):
         """
         Saves the model using safetensors format.

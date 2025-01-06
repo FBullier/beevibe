@@ -172,3 +172,5 @@ cython_debug/
 
 # Ini config file
 examples/config.ini
+examples/lora_*/*.*
+examples/model_*/*.*
