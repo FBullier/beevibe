@@ -43,21 +43,17 @@ class MultiClassTrainer:
     """
     def __init__(
         self,
-        num_classes: int = 3,
+        num_classes: int = 2,
         classes_names: List[str] = [],
-        model=None,
-        optimizer_class=None,
-        scheduler_class=None,
-        model_name: str = "camembert-base",
+        model="camembert-base",
+        optimizer_class=Adam,
+        scheduler_class=ReduceLROnPlateau,
         max_len: int = 128,
         lr: float = 1e-5,
         multilabel: bool = False,
         device: Optional[str] = None,
-        model_creator: Optional[Callable[[str, int], nn.Module]] = None,
-        optimizer_creator: Optional[Callable[[nn.Module], torch.optim.Optimizer]] = None,
-        optimizer_params: Optional[Dict[str, Any]] = None,
-        scheduler_creator: Optional[Callable[[torch.optim.Optimizer], Any]] = None,
-        scheduler_params: Optional[Dict[str, Any]] = None,
+        optimizer_params: Optional[Dict[str, Any]] = {"lr": 1e-5},
+        scheduler_params: Optional[Dict[str, Any]] = {"mode":"min", "factor":0.8, "patience":2},
         scheduler_needs_loss: bool = True,
         use_lora: bool = False,
         lora_r: int = 8,
@@ -79,7 +75,6 @@ class MultiClassTrainer:
             model : model to use for training (str or Bee model class)
             optimizer_class : Optimizer class of the Model
             scheduler_class : Scheduler class of the Model
-            model_name (str): Name of the model to use (e.g., Hugging Face model name).
             max_len (int): Maximum token length for the tokenizer.
             lr (float): Learning rate for the optimizer.
             multilabel (bool): Whether the task is multi-label classification.
@@ -107,7 +102,6 @@ class MultiClassTrainer:
 
         _ = DatasetConfig(num_classes=num_classes, 
                           classes_names=classes_names,
-                          model_name=model_name,
                           max_len=max_len,
                           lr=lr,
                           multilabel=multilabel,
@@ -124,7 +118,6 @@ class MultiClassTrainer:
                           use_double_quant=False
                           )
 
-        self.model_name = model_name
         self.num_classes = num_classes
         self.max_len = max_len
         self.lr = lr
@@ -140,8 +133,6 @@ class MultiClassTrainer:
                                     )
         else:
             self.quantization_config = None            
-
-
 
         # Lora parameters
         self.use_lora = use_lora
@@ -177,12 +168,12 @@ class MultiClassTrainer:
             raise("model must be a beemodel or a string containing the model name ex. ModernBert")
 
         # Get Optimizer class and parameters (set default to Adam)
-        self.optimizer_class = optimizer_class if optimizer_class else Adam
-        self.optimizer_params = optimizer_params if optimizer_params else {"lr": lr}
+        self.optimizer_class = optimizer_class
+        self.optimizer_params = optimizer_params
 
         # Get Schedumer class and parameters (set default to ReduceLROnPlateau)
-        self.scheduler_class = scheduler_class if scheduler_class else ReduceLROnPlateau
-        self.scheduler_params = scheduler_params if scheduler_params else {"mode":"min", "factor":0.8, "patience":2}
+        self.scheduler_class = scheduler_class 
+        self.scheduler_params = scheduler_params 
         self.scheduler_needs_loss = scheduler_needs_loss
 
         # Init logger 
