@@ -32,6 +32,8 @@ from typing import List, Optional, Tuple, Any, Dict
 
 from peft import LoraConfig, TaskType
 from peft import get_peft_model
+from peft import PeftModel
+
 from transformers import BitsAndBytesConfig
 
 
@@ -133,10 +135,12 @@ class MultiClassTrainer:
 
         # Lora parameters
         self.use_lora = use_lora
+        self.lora_config = None
         if not self.use_lora:
             self.lora_r = None
             self.lora_alpha = None
             self.lora_dropout = None
+            
         else:
             self.lora_r = lora_r
             self.lora_alpha = lora_alpha
@@ -158,6 +162,7 @@ class MultiClassTrainer:
         # Create the model structure
         if isinstance(model, BeeBaseModel):
             self.model = model
+            self.model_name = self.model.model_name
         elif isinstance(model, str):
             self.model_name = model
             self.model = self.model_name
@@ -379,7 +384,7 @@ class MultiClassTrainer:
                 self.logger_info(f"Target modules : {target_modules}")
 
             # Set Lora configuration
-            lora_config = LoraConfig(
+            self.lora_config = LoraConfig(
                 task_type=TaskType.SEQ_CLS,
                 r=self.lora_r,                        # Rank of low-rank decomposition
                 lora_alpha=self.lora_alpha,              # Scaling factor
@@ -389,7 +394,7 @@ class MultiClassTrainer:
             )
 
             # Get Peft model from Lora configuration
-            self.model = get_peft_model(self.model, lora_config)
+            self.model = get_peft_model(self.model, self.lora_config)
 
             # Add classifier head to train
             for name, param in self.model.named_parameters():
@@ -996,7 +1001,7 @@ class MultiClassTrainer:
 
         return ret
 
-    def save(self, path: str) -> None:
+    def save_model(self, path: str) -> None:
         """
         Save the trained model and tokenizer to the specified path.
 
@@ -1004,26 +1009,31 @@ class MultiClassTrainer:
             path (str): Directory path where the model and tokenizer will be saved.
         """
 
-        _ = DatasetConfig(
-            path=path
-            )
+        #_ = DatasetConfig(
+        #    path=path
+        #    )
 
-        self.model.save_pretrained(path, safe_serialization=True)
-        self.tokenizer.save_pretrained(path)
+        merged_model = self.model.merge_and_unload()
+        merged_model.save_model_safetensors(path)
 
-    def load(self, path: str) -> None:
+    def save_adaptater(self, path: str) -> None:
         """
-        Load a pre-trained model and tokenizer from the specified path.
+        Save the trained model and tokenizer to the specified path.
 
         Args:
-            path (str): Directory path where the model and tokenizer are saved.
+            path (str): Directory path where the model and tokenizer will be saved.
         """
-        _ = DatasetConfig(
-            path=path
-            )
 
-        self.tokenizer = HFTokenizer().from_pretrained(path)
-        self.model = HFModelForClassification().from_pretrained(path)
+        #_ = DatasetConfig(
+        #    path=path
+        #    )
+
+        if self.use_lora:
+            peft_model = PeftModel(self.model, self.lora_config)
+            peft_model.save_pretrained(path)
+        else:
+            self.logger_info("The adapter does not appear to be utilized during model training.")
+
 
     def __preprocess(self, raw_reviews: List[str], max_len: int = 128) -> Tuple[torch.Tensor, torch.Tensor]:
         """

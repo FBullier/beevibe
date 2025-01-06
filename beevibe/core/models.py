@@ -1,10 +1,14 @@
+import os, json
 import torch
 import torch.nn as nn
+from safetensors.torch import save_file, load_file
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 from transformers import BitsAndBytesConfig
 import transformers
 
 from typing import Optional
+
+from beevibe.utils.validator import DatasetConfig
 
 from huggingface_hub.utils import disable_progress_bars as hfhub_disable_progress_bar
 hfhub_disable_progress_bar()
@@ -141,6 +145,70 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
 
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
 
+    def save_model_safetensors(self, save_directory: str):
+        """
+        Saves the model using safetensors format.
+
+        Args:
+            save_directory (str): The directory where the model will be saved.
+        """
+        os.makedirs(save_directory, exist_ok=True)
+
+        # Collect weights
+        weights = {}
+        weights.update(self.base_model.state_dict())  # Add base model weights
+        weights.update({f"classifier.{k}": v for k, v in self.classifier.state_dict().items()})  # Add classifier weights
+
+        # Save weights using safetensors
+        save_file(weights, os.path.join(save_directory, "model.safetensors"))
+
+        # Save model configuration
+        config = {
+            "model_name": self.model_name,
+            "num_labels": self.num_labels,
+        }
+
+        #torch.save(config, os.path.join(save_directory, "config.pth"))
+        with open(os.path.join(save_directory, "config.json"), "w") as f:
+            json.dump(config, f)
+
+        print(f"Model saved in Safetensors format to {save_directory}")
+
+    @classmethod
+    def load_model_safetensors(cls, save_directory: str):
+        """
+        Loads the model from safetensors format.
+
+        Args:
+            save_directory (str): The directory where the model is saved.
+
+        Returns:
+            BeeSimpleMaskModelForClassification: The loaded model.
+        """
+        # Load the configuration
+        #config = torch.load(os.path.join(save_directory, "config.pth"))
+        with open(os.path.join(save_directory, "config.json"), "r") as f:
+            config = json.load(f)
+
+        model_name = config["model_name"]
+        num_labels = config["num_labels"]
+
+        # Initialize the model
+        model = cls(model_name=model_name, num_labels=num_labels)
+        model.from_pretrained()  # Load the base model
+
+        # Load the weights from safetensors
+        weights = load_file(os.path.join(save_directory, "model.safetensors"))
+        base_model_weights = {k: v for k, v in weights.items() if not k.startswith("classifier.")}
+        classifier_weights = {k[len("classifier."):]: v for k, v in weights.items() if k.startswith("classifier.")}
+
+        # Load the weights into the respective components
+        model.base_model.load_state_dict(base_model_weights, strict=True)
+        model.classifier.load_state_dict(classifier_weights, strict=True)
+
+        print(f"Model loaded from Safetensors format in {save_directory}")
+        return model
+
 
 class BeeCustomMaskModelForClassification(BeeBaseModel):
     """
@@ -249,3 +317,66 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
         logits = self.classifier(embeddings)
 
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
+
+    def save_model_safetensors(self, save_directory: str):
+        """
+        Saves the model using safetensors format.
+
+        Args:
+            save_directory (str): The directory where the model will be saved.
+        """
+        os.makedirs(save_directory, exist_ok=True)
+
+        # Collect weights
+        weights = {}
+        weights.update(self.base_model.state_dict())  # Add base model weights
+        weights.update({f"classifier.{k}": v for k, v in self.classifier.state_dict().items()})  # Add classifier weights
+
+        # Save weights using safetensors
+        save_file(weights, os.path.join(save_directory, "model.safetensors"))
+
+        # Save model configuration
+        config = {
+            "model_name": self.model_name,
+            "num_labels": self.num_labels,
+            "layer_configs": self.layer_configs,
+        }
+
+        # torch.save(config, os.path.join(save_directory, "config.pth"))
+        with open(os.path.join(save_directory, "config.json"), "w") as f:
+            json.dump(config, f)
+
+    @classmethod
+    def load_model_safetensors(cls, save_directory: str):
+        """
+        Loads the model from safetensors format.
+
+        Args:
+            save_directory (str): The directory where the model is saved.
+
+        Returns:
+            BeeCustomMaskModelForClassification: The loaded model.
+        """
+        # Load the configuration
+        #config = torch.load(os.path.join(save_directory, "config.pth"), weights_only=True)
+        with open(os.path.join(save_directory, "config.json"), "r") as f:
+            config = json.load(f)
+
+        model_name = config["model_name"]
+        num_labels = config["num_labels"]
+        layer_configs = config["layer_configs"]
+
+        # Initialize the model
+        model = cls(model_name=model_name, num_labels=num_labels, layer_configs=layer_configs)
+        model.from_pretrained()  # Load the base model
+
+        # Load the weights from safetensors
+        weights = load_file(os.path.join(save_directory, "model.safetensors"))
+        base_model_weights = {k: v for k, v in weights.items() if not k.startswith("classifier.")}
+        classifier_weights = {k[len("classifier."):]: v for k, v in weights.items() if k.startswith("classifier.")}
+
+        # Load the weights into the respective components
+        model.base_model.load_state_dict(base_model_weights, strict=True)
+        model.classifier.load_state_dict(classifier_weights, strict=True)
+
+        return model
