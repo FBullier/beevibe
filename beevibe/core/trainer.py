@@ -73,16 +73,16 @@ class MultiClassTrainer:
             num_classes (int): Number of classes for classification.
             classes_names (List[str]): Names of the classes. If empty, generates default names.
             model : model to use for training (str or Bee model class)
-            optimizer_class : Optimizer class of the Model
-            scheduler_class : Scheduler class of the Model
+            optimizer_class : Optimizer class of the Model (default is Adam)
+            scheduler_class : Scheduler class of the Model (default is ReduceLROnPlateau)
             max_len (int): Maximum token length for the tokenizer.
-            lr (float): Learning rate for the optimizer.
-            multilabel (bool): Whether the task is multi-label classification.
+            lr (float): Learning rate for the optimizer (default is 1e-5) 
+            multilabel (bool): Whether the task is multi-label classification (default is False).
             device (Optional[str]): Device to use (e.g., 'cuda' or 'cpu'). If None, defaults to CUDA if available.
-            optimizer_params (Optional[Dict[str, Any]]): Parameters for the optimizer.
-            scheduler_params (Optional[Dict[str, Any]]): Parameters for the scheduler.
-            scheduler_needs_loss (bool): Whether the scheduler needs loss information.
-            use_lora(bool): Use Lora to train the model
+            optimizer_params (Optional[Dict[str, Any]]): Parameters for the optimizer (default is {"lr": 1e-5}).
+            scheduler_params (Optional[Dict[str, Any]]): Parameters for the scheduler (default is {"mode":"min", "factor":0.8, "patience":2}).
+            scheduler_needs_loss (bool): Whether the scheduler needs loss information (default is True).
+            use_lora(bool): Use Lora to train the model (default is False)
             lora_r (int): Lora rank value.
             lora_alpha (int): Lora Alpha value.
             lora_dropout (float): Lora dropout value.
