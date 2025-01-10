@@ -1,6 +1,7 @@
 import os, json
 import torch
 import torch.nn as nn
+from torch.nn.functional import softmax
 from safetensors.torch import save_file, load_file
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 from transformers import BitsAndBytesConfig
@@ -195,7 +196,24 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
 
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
 
+
     def predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False):
+
+        #----------------------------------
+        # <TODO>
+        # - Add texts parameters
+        # - get or load tokenizer
+        # - utiliser un batch_size :
+        #   - comme dans flairNLP : classifier.predict(sentences, mini_batch_size=32)
+        # - tokenized texts and get input_ids, attention_mask
+        # - call _raw_predict and return result 
+        #----------------------------------
+
+
+
+        return
+
+    def _raw_predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False):
         """
         Perform prediction on input data.
 
