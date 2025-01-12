@@ -12,19 +12,19 @@ class TextDatasetMC(Dataset):
         #max_len (int): Maximum sequence length for tokenization.
     """
 
-    def __init__(self, texts: list[str], labels: list[int], tokenizer): #, max_len: int = 128):
+    def __init__(self, texts: list[str], labels: list[int], hftokenizer): #, max_len: int = 128):
         """
-        Initializes the TextDatasetMC class with the given texts, labels, tokenizer, and maximum sequence length.
+        Initializes the TextDatasetMC class with the given texts, labels, hftokenizer, and maximum sequence length.
 
         Args:
             texts (list of str): Text samples.
             labels (list of int): Corresponding labels.
-            tokenizer (transformers.PreTrainedTokenizer): Tokenizer for text preprocessing.
+            hftokenizer (beevive.models.HFTokenizer): Tokenizer for text preprocessing.
             max_len (int, optional): Maximum sequence length for tokenization. Default is 128.
         """
         self.texts = texts
         self.labels = labels
-        self.tokenizer = tokenizer
+        self.hftokenizer = hftokenizer
         #self.max_len = max_len
 
     def __len__(self) -> int:
