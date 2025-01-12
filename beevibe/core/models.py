@@ -5,9 +5,10 @@ from torch.nn.functional import softmax
 from safetensors.torch import save_file, load_file
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 from transformers import BitsAndBytesConfig
+from multiprocessing import Pool, cpu_count
 import transformers
-
-from typing import Optional
+from multiprocessing import Pool, cpu_count
+from typing import Optional, List
 
 from beevibe.utils.validator import DatasetConfig
 
@@ -20,7 +21,7 @@ class HFTokenizer:
     A wrapper for Hugging Face Tokenizer to handle tokenization with custom configurations.
     """
 
-    def __init__(self, preprocessing_config: dict = None):
+    def __init__(self, preprocessing_config: Optional[dict] = None):
         """
         Initializes the HFTokenizer class.
         """
@@ -50,10 +51,13 @@ class HFTokenizer:
                 assert "Tokenizer preprocessing configuration is not define"
 
         # Load tokenizer from model name or path
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            pretrained_model_name_or_path=model_name,
-            **kwargs
-        )
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                pretrained_model_name_or_path=model_name,
+                **kwargs
+            )
+        except Exception as e:
+            self.tokenizer = None
 
         return self
 
@@ -150,6 +154,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         super(BeeSimpleMaskModelForClassification, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
+        self.hftokenizer = None
 
     def from_pretrained(self, quantization_config: Optional[BitsAndBytesConfig] = None ):
 
@@ -197,48 +202,128 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
 
 
-    def predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False):
-
-        #----------------------------------
-        # <TODO>
-        # - Add texts parameters
-        # - get or load tokenizer
-        # - utiliser un batch_size :
-        #   - comme dans flairNLP : classifier.predict(sentences, mini_batch_size=32)
-        # - tokenized texts and get input_ids, attention_mask
-        # - call _raw_predict and return result 
-        #----------------------------------
-
-
-
-        return
-
-    def _raw_predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False):
+    def predict(self, raw_texts: List[str], hftokenizer: Optional[HFTokenizer] = None, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5):
         """
-        Perform prediction on input data.
+        Perform predictions on raw text inputs using the model.
+
+        This function tokenizes the input text data, processes it through the model in batches, and returns either 
+        class probabilities or predictions. Supports multi-class and multi-label classification based on the model configuration.
+
+        Args:
+            raw_texts (List[str]): A list of raw text strings to be classified.
+            hftokenizer (Optional[HFTokenizer]): An optional tokenizer instance. If not provided, it attempts to use 
+                `self.hftokenizer` or loads a tokenizer based on `self.model_name`.
+            return_probabilities (bool): If True, the function returns class probabilities. Otherwise, it returns 
+                predicted class labels (for multi-class) or binary predictions (for multi-label).
+            batch_size (int): Number of samples to process per batch during prediction. Defaults to 32.
+            num_workers (int): Number of parallel worker processes for batch processing (CPU only). Defaults to 
+                `None`, which uses all available CPU cores minus one.
+            threshold (float): The threshold for binary predictions in multi-label classification. Defaults to 0.5.
+
+        Returns:
+            List: The predictions for the input texts. The output format depends on `return_probabilities` and 
+            the model type:
+                - Multi-class: Returns a list of predicted class indices or probabilities.
+                - Multi-label: Returns a list of binary predictions (per label) or probabilities.
+        
+        Raises:
+            AssertionError: If no tokenizer is found and cannot be loaded for the given model name.
+
+        Example:
+            >>> model = BeeSimpleMaskModelForClassification(model_name="bert-base-uncased", num_labels=3)
+            >>> raw_texts = ["This is a positive example.", "This is a negative example."]
+            >>> predictions = model.predict(raw_texts, batch_size=16)
+            >>> print(predictions)
+            [0, 2]
+
+            >>> probabilities = model.predict(raw_texts, return_probabilities=True, batch_size=16)
+            >>> print(probabilities)
+            [[0.8, 0.1, 0.1], [0.2, 0.7, 0.1]]
+        """
+
+        # Get/Load the tokenizer
+        if hftokenizer is None:
+            if self.hftokenizer is None:
+                hftokenizer = HFTokenizer().from_pretrained(self.model_name)
+                if hftokenizer.tokenizer is None:
+                    assert f"No tokenizer found for the model name : {self.model_name}"
+                else:
+                    self.hftokenizer = hftokenizer
+        else:
+            self.hftokenizer = hftokenizer
+
+        # Encode row texts list
+        input_ids, attention_mask = self.hftokenizer.encode(raw_texts)
+
+        # Get model raw predictions 
+        ret = self._raw_predict(input_ids, attention_mask, return_probabilities, batch_size, num_workers, threshold)
+
+        return ret
+
+
+    def _raw_predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5):
+        """
+        Perform batched prediction on input data, supporting multi-label and multi-class classification.
 
         Args:
             input_ids (torch.Tensor): Tokenized input IDs.
             attention_mask (torch.Tensor): Attention mask.
             return_probabilities (bool): If True, return probabilities instead of class labels.
+            batch_size (int): Number of samples to process per batch.
+            num_workers (int): Number of parallel processes to use (defaults to number of CPU cores minus one).
+            threshold (float): Threshold for binary predictions in multi-label classification.
 
         Returns:
-            torch.Tensor: Predicted class labels or probabilities.
+            list: Predicted class labels, probabilities, or binary predictions for multi-label classification.
         """
         self.eval()  # Set model to evaluation mode
-        with torch.no_grad():  # Disable gradient computation
-            # Forward pass
-            outputs = self.forward(input_ids=input_ids, attention_mask=attention_mask)
-            logits = outputs.logits  # Extract logits from model output
 
-            if return_probabilities:
-                # Convert logits to probabilities using softmax
-                probabilities = softmax(logits, dim=-1)
-                return probabilities
-            else:
-                # Convert logits to class labels using argmax
-                predictions = torch.argmax(logits, dim=-1)
-                return predictions
+        # Default to the number of available CPU cores minus one
+        if num_workers is None:
+            num_workers = max(1, cpu_count() - 1)
+
+        def process_batch(batch_input_ids, batch_attention_mask):
+            """Process a single batch and return predictions or probabilities."""
+            with torch.no_grad():  # Disable gradient computation
+                outputs = self.forward(input_ids=batch_input_ids, attention_mask=batch_attention_mask)
+                logits = outputs.logits
+
+                if self.multilabel:
+                    # Multi-label classification
+                    probs = torch.sigmoid(logits)  # Apply sigmoid for probabilities
+                    if return_probabilities:
+                        return probs.cpu()  # Return probabilities
+                    else:
+                        # Apply threshold to generate binary predictions
+                        return (probs > threshold).int().cpu()
+                else:
+                    # Multi-class classification
+                    if return_probabilities:
+                        # Convert logits to probabilities using softmax
+                        return softmax(logits, dim=-1).cpu()
+                    else:
+                        # Convert logits to class labels using argmax
+                        return torch.argmax(logits, dim=-1).cpu()
+
+        # Create batches
+        batches = [
+            (input_ids[i:i + batch_size], attention_mask[i:i + batch_size])
+            for i in range(0, len(input_ids), batch_size)
+        ]
+
+        if torch.cuda.is_available():
+            # Process batches sequentially for GPU (CUDA tensors cannot be shared across processes)
+            results = []
+            for batch_input_ids, batch_attention_mask in batches:
+                results.append(process_batch(batch_input_ids, batch_attention_mask))
+        else:
+            # Use multiprocessing for CPU
+            with Pool(processes=num_workers) as pool:
+                results = pool.starmap(process_batch, batches)
+
+        # Concatenate results from all batches
+        return torch.cat(results, dim=0).tolist()
+
 
     def save_model_safetensors(self, save_directory: str):
         """

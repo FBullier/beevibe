@@ -1070,40 +1070,6 @@ class MultiClassTrainer:
 
         return encoded_batch["input_ids"], encoded_batch["attention_mask"]
 
-    def predict(self, texts: List[str], max_len: int = 128) -> List[Any]:
-        """
-        Perform inference on a list of text inputs.
-
-        Args:
-            texts (List[str]): List of input text samples.
-            max_len (int): Maximum sequence length for tokenization (default: 128).
-
-        Returns:
-            List[Any]: Predicted labels or probabilities.
-        """
-
-        _ = DatasetConfig(
-            texts=texts,
-            max_len=max_len
-            )
-
-        with torch.no_grad():
-            self.model.eval()
-            input_ids, attention_mask = self.__preprocess(raw_reviews=texts,max_len=max_len)
-            outputs = self.model(input_ids, attention_mask=attention_mask)
-
-            if self.multilabel:
-                logits = outputs.logits
-                probs = torch.sigmoid(
-                    logits
-                )  # Apply sigmoid for multi-label classification
-                preds = (
-                    (probs > 0.5).int().cpu().numpy().tolist()
-                )  # Use threshold to make binary predictions
-            else:
-                preds = outputs.logits.argmax(dim=1).tolist()
-
-            return preds
 
     def holdout(
         self,
