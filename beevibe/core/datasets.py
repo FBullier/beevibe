@@ -48,7 +48,28 @@ class TextDatasetMC(Dataset):
         """
         text = self.texts[idx]
         label = self.labels[idx]
-        encoding = self.hftokenizer.encode_plus(text)
+
+        encoded_batch = self.hftokenizer.encode_plus(text)
+        input_ids = encoded_batch["input_ids"]
+        attention_mask = encoded_batch["attention_mask"]
+
+        #print("*****************************")
+        #print(self.hftokenizer.preprocessing_config)
+        #print("*****************************")
+        #encoded_batch = None
+        #preprocessing_config = self.hftokenizer.encode_plus(text)
+
+        #print("*****************************")
+        #print(preprocessing_config["return_tensors"])
+        #print("*****************************")
+
+        #print("**************************")
+        #print(text)
+        #print(label)
+        #print(encoded_batch)
+        #print(input_ids)
+        #print(attention_mask)
+        #print("**************************")
 
         #encoding = self.tokenizer.encode_plus(
         #    text,
@@ -63,8 +84,8 @@ class TextDatasetMC(Dataset):
 
         return {
             "text": text,
-            "input_ids": encoding["input_ids"].flatten(),
-            "attention_mask": encoding["attention_mask"].flatten(),
+            "input_ids": input_ids.flatten(),
+            "attention_mask": attention_mask.flatten(),
             "label": torch.tensor(label, dtype=torch.long),
         }
 

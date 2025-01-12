@@ -995,11 +995,11 @@ class MultiClassTrainer:
 
         if self.multilabel:
             train_dataset = TextDatasetML(
-                train_texts, train_labels, self.hftokenizer.tokenizer
+                train_texts, train_labels, self.hftokenizer
             )
         else:
             train_dataset = TextDatasetMC(
-                train_texts, train_labels, self.hftokenizer.tokenizer
+                train_texts, train_labels, self.hftokenizer
             )
 
         train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
@@ -1117,17 +1117,17 @@ class MultiClassTrainer:
 
         if self.multilabel:
             train_dataset = TextDatasetML(
-                train_texts, train_labels, self.hftokenizer.tokenizer, self.max_len
+                train_texts, train_labels, self.hftokenizer
             )
             val_dataset = TextDatasetML(
-                val_texts, val_labels, self.hftokenizer.tokenizer, self.max_len
+                val_texts, val_labels, self.hftokenizer
             )
         else:
             train_dataset = TextDatasetMC(
-                train_texts, train_labels, self.hftokenizer.tokenizer
+                train_texts, train_labels, self.hftokenizer
             )
             val_dataset = TextDatasetMC(
-                val_texts, val_labels, self.hftokenizer.tokenizer
+                val_texts, val_labels, self.hftokenizer
             )
 
         train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
@@ -1228,17 +1228,17 @@ class MultiClassTrainer:
 
             if self.multilabel:
                 train_dataset = TextDatasetML(
-                    train_texts, train_labels, self.hftokenizer.tokenizer, self.max_len
+                    train_texts, train_labels, self.hftokenizer
                 )
                 val_dataset = TextDatasetML(
-                    val_texts, val_labels, self.hftokenizer.tokenizer, self.max_len
+                    val_texts, val_labels, self.hftokenizer
                 )
             else:
                 train_dataset = TextDatasetMC(
-                    train_texts, train_labels, self.hftokenizer.tokenizer
+                    train_texts, train_labels, self.hftokenizer
                 )
                 val_dataset = TextDatasetMC(
-                    val_texts, val_labels, self.hftokenizer.tokenizer
+                    val_texts, val_labels, self.hftokenizer
                 )
 
             train_loader = DataLoader(
