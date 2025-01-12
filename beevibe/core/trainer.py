@@ -2,7 +2,7 @@ import random
 import pandas as pd
 import numpy as np
 import time
-import gc, json
+import gc
 
 import torch
 import torch.nn as nn
@@ -78,7 +78,7 @@ class MultiClassTrainer:
             optimizer_class : Optimizer class of the Model (default is Adam)
             scheduler_class : Scheduler class of the Model (default is ReduceLROnPlateau)
             max_len (int): Maximum token length for the tokenizer.
-            lr (float): Learning rate for the optimizer (default is 1e-5) 
+            lr (float): Learning rate for the optimizer (default is 1e-5)
             multilabel (bool): Whether the task is multi-label classification (default is False).
             device (Optional[str]): Device to use (e.g., 'cuda' or 'cpu'). If None, defaults to CUDA if available.
             optimizer_params (Optional[Dict[str, Any]]): Parameters for the optimizer (default is {"lr": 1e-5}).
@@ -141,7 +141,7 @@ class MultiClassTrainer:
             self.lora_r = None
             self.lora_alpha = None
             self.lora_dropout = None
-            
+
         else:
             self.lora_r = lora_r
             self.lora_alpha = lora_alpha
@@ -442,7 +442,7 @@ class MultiClassTrainer:
 
         # Get or load tokenizer
         self.hftokenizer = HFTokenizer(preprocessing_config).from_pretrained(
-            self.model_name, 
+            self.model_name,
             clean_up_tokenization_spaces=True
         )
 

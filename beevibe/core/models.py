@@ -1,4 +1,5 @@
-import os, json
+import os
+import json
 import torch
 import torch.nn as nn
 from torch.nn.functional import softmax
@@ -7,10 +8,8 @@ from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassific
 from transformers import BitsAndBytesConfig
 from multiprocessing import Pool, cpu_count
 import transformers
-from multiprocessing import Pool, cpu_count
 from typing import Optional, List
 
-from beevibe.utils.validator import DatasetConfig
 
 from huggingface_hub.utils import disable_progress_bars as hfhub_disable_progress_bar
 hfhub_disable_progress_bar()
@@ -56,7 +55,7 @@ class HFTokenizer:
                 pretrained_model_name_or_path=model_name,
                 **kwargs
             )
-        except Exception as e:
+        except Exception:
             self.tokenizer = None
 
         return self
@@ -94,7 +93,7 @@ class HFTokenizer:
             else:
                 assert "Tokenizer preprocessing configuration must be defined, call from_pretrained()"
         else:
-            assert "Tokenizer is not define, call from_pretrained()"            
+            assert "Tokenizer is not define, call from_pretrained()"
         return encoded_batch["input_ids"], encoded_batch["attention_mask"]
 
     def encode_plus(self, raw_texts: str, ):
@@ -107,7 +106,7 @@ class HFTokenizer:
             else:
                 assert "Tokenizer preprocessing configuration must be defined, call from_pretrained()"
         else:
-            assert "Tokenizer is not define, call from_pretrained()"            
+            assert "Tokenizer is not define, call from_pretrained()"
         return encoded_batch["input_ids"], encoded_batch["attention_mask"]
 
 
@@ -219,22 +218,22 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         """
         Perform predictions on raw text inputs using the model.
 
-        This function tokenizes the input text data, processes it through the model in batches, and returns either 
+        This function tokenizes the input text data, processes it through the model in batches, and returns either
         class probabilities or predictions. Supports multi-class and multi-label classification based on the model configuration.
 
         Args:
             raw_texts (List[str]): A list of raw text strings to be classified.
-            hftokenizer (Optional[HFTokenizer]): An optional tokenizer instance. If not provided, it attempts to use 
+            hftokenizer (Optional[HFTokenizer]): An optional tokenizer instance. If not provided, it attempts to use
                 `self.hftokenizer` or loads a tokenizer based on `self.model_name`.
-            return_probabilities (bool): If True, the function returns class probabilities. Otherwise, it returns 
+            return_probabilities (bool): If True, the function returns class probabilities. Otherwise, it returns
                 predicted class labels (for multi-class) or binary predictions (for multi-label).
             batch_size (int): Number of samples to process per batch during prediction. Defaults to 32.
-            num_workers (int): Number of parallel worker processes for batch processing (CPU only). Defaults to 
+            num_workers (int): Number of parallel worker processes for batch processing (CPU only). Defaults to
                 `None`, which uses all available CPU cores minus one.
             threshold (float): The threshold for binary predictions in multi-label classification. Defaults to 0.5.
 
         Returns:
-            List: The predictions for the input texts. The output format depends on `return_probabilities` and 
+            List: The predictions for the input texts. The output format depends on `return_probabilities` and
             the model type:
                 - Multi-class: Returns a list of predicted class indices or probabilities.
                 - Multi-label: Returns a list of binary predictions (per label) or probabilities.
@@ -268,7 +267,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         # Encode row texts list
         input_ids, attention_mask = self.hftokenizer.encode(raw_texts)
 
-        # Get model raw predictions 
+        # Get model raw predictions
         ret = self._raw_predict(input_ids, attention_mask, return_probabilities, batch_size, num_workers, threshold)
 
         return ret
