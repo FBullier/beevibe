@@ -23,7 +23,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from beevibe.core.datasets import TextDatasetML, TextDatasetMC
-from beevibe.core.models import HFTokenizer, HFModelForClassification, BeeBaseModel
+from beevibe.core.models import HFModelForClassification, BeeBaseModel
+from beevibe.core.tokenizers import HFTokenizer
 from beevibe.core.earlystopping import EarlyStopping
 from beevibe.utils.logger import setup_logger
 from beevibe.utils.validator import DatasetConfig

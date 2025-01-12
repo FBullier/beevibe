@@ -12,7 +12,7 @@ class TextDatasetMC(Dataset):
         #max_len (int): Maximum sequence length for tokenization.
     """
 
-    def __init__(self, texts: list[str], labels: list[int], hftokenizer): #, max_len: int = 128):
+    def __init__(self, texts: list[str], labels: list[int], hftokenizer):
         """
         Initializes the TextDatasetMC class with the given texts, labels, hftokenizer, and maximum sequence length.
 
@@ -25,7 +25,6 @@ class TextDatasetMC(Dataset):
         self.texts = texts
         self.labels = labels
         self.hftokenizer = hftokenizer
-        #self.max_len = max_len
 
     def __len__(self) -> int:
         """
@@ -53,35 +52,6 @@ class TextDatasetMC(Dataset):
         input_ids = encoded_batch["input_ids"]
         attention_mask = encoded_batch["attention_mask"]
 
-        #print("*****************************")
-        #print(self.hftokenizer.preprocessing_config)
-        #print("*****************************")
-        #encoded_batch = None
-        #preprocessing_config = self.hftokenizer.encode_plus(text)
-
-        #print("*****************************")
-        #print(preprocessing_config["return_tensors"])
-        #print("*****************************")
-
-        #print("**************************")
-        #print(text)
-        #print(label)
-        #print(encoded_batch)
-        #print(input_ids)
-        #print(attention_mask)
-        #print("**************************")
-
-        #encoding = self.tokenizer.encode_plus(
-        #    text,
-        #    add_special_tokens=True,
-        #    truncation=True,
-        #    padding="max_length",
-        #    max_length=self.max_len,
-        #    return_token_type_ids=False,
-        #    return_attention_mask=True,
-        #    return_tensors="pt",
-        #)
-
         return {
             "text": text,
             "input_ids": input_ids.flatten(),
@@ -89,7 +59,7 @@ class TextDatasetMC(Dataset):
             "label": torch.tensor(label, dtype=torch.long),
         }
 
-# <TODO > Appel du tokenizer à modifier comme dans la classe TextDatasetMC()
+
 class TextDatasetML(Dataset):
     """
     A Dataset class for multi-label text classification.
@@ -101,7 +71,7 @@ class TextDatasetML(Dataset):
         max_len (int): Maximum sequence length for tokenization.
     """
 
-    def __init__(self, texts: list[str], labels: list[list[int]], tokenizer, max_len: int = 128):
+    def __init__(self, texts: list[str], labels: list[list[int]], hftokenizer):
         """
         Initializes the TextDatasetML class with the given texts, labels, tokenizer, and maximum sequence length.
 
@@ -113,8 +83,7 @@ class TextDatasetML(Dataset):
         """
         self.texts = texts
         self.labels = labels
-        self.tokenizer = tokenizer
-        self.max_len = max_len
+        self.tokenizer = hftokenizer
 
     def __len__(self) -> int:
         """
@@ -138,20 +107,13 @@ class TextDatasetML(Dataset):
         text = self.texts[idx]
         label = self.labels[idx]
 
-        encoding = self.tokenizer.encode_plus(
-            text,
-            add_special_tokens=True,
-            truncation=True,
-            padding="max_length",
-            max_length=self.max_len,
-            return_token_type_ids=False,
-            return_attention_mask=True,
-            return_tensors="pt",
-        )
+        encoded_batch = self.hftokenizer.encode_plus(text)
+        input_ids = encoded_batch["input_ids"]
+        attention_mask = encoded_batch["attention_mask"]
 
         return {
             "text": text,
-            "input_ids": encoding["input_ids"].flatten(),
-            "attention_mask": encoding["attention_mask"].flatten(),
+            "input_ids": input_ids.flatten(),
+            "attention_mask": attention_mask.flatten(),
             "label": torch.tensor(label, dtype=torch.float),
         }

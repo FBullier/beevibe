@@ -5,115 +5,18 @@ import torch
 import torch.nn as nn
 from torch.nn.functional import softmax
 from safetensors.torch import save_file, load_file
-from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoModel, AutoModelForSequenceClassification
 from transformers import BitsAndBytesConfig
-#from multiprocessing import Pool, cpu_count
 from multiprocessing import cpu_count
 from joblib import Parallel, delayed
-
 import transformers
-from typing import Optional, List
 
+from beevibe.core.tokenizers import HFTokenizer
+
+from typing import Optional, List
 
 from huggingface_hub.utils import disable_progress_bars as hfhub_disable_progress_bar
 hfhub_disable_progress_bar()
-
-
-class HFTokenizer:
-    """
-    A wrapper for Hugging Face Tokenizer to handle tokenization with custom configurations.
-    """
-
-    def __init__(self, preprocessing_config: Optional[dict] = None):
-        """
-        Initializes the HFTokenizer class.
-        """
-        super(HFTokenizer, self).__init__()
-
-        self.tokenizer =  None
-        self.preprocessing_config = preprocessing_config
-
-
-    def from_pretrained(self, model_name: str, **kwargs):
-        """
-        Load a tokenizer from a pretrained model.
-
-        Args:
-            model_name (str): The name of the pretrained model.
-            **kwargs: Additional keyword arguments to pass to the
-                      AutoTokenizer.from_pretrained method.
-
-        Returns:
-            transformers.PreTrainedTokenizer: A tokenizer instance.
-        """
-
-        # Load preprocessing config if needed from model path
-        if self.preprocessing_config is None:
-            model_directory = kwargs.get("model_directory")
-            self.load_config(model_directory)
-            if self.preprocessing_config is None:
-                assert "Tokenizer preprocessing configuration is not define"
-
-        # Load tokenizer from model name or path
-        try:
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                pretrained_model_name_or_path=model_name,
-                **kwargs
-            )
-        except Exception:
-            self.tokenizer = None
-
-        return self
-
-    def  save_pretrained(self, path):
-        if self.tokenizer:
-            self.tokenizer.save_pretrained(path)
-        else:
-            assert "Tokenizer is not define, call from_pretrained()"
-
-    def save_config(self, path):
-        if self.tokenizer:
-            if self.preprocessing_config:
-                with open(f"{path}/preprocessing_config.json", "w") as f:
-                    json.dump(self.preprocessing_config, f)
-            else:
-                assert "Tokenizer preprocessing configuration is not define"
-        else:
-            assert "Tokenizer is not define, call from_pretrained()"
-
-    def load_config(self, path):
-        try:
-            with open(f"{path}/preprocessing_config.json", "r") as f:
-                self.preprocessing_config = json.load(f)           
-        except FileNotFoundError:
-            self.preprocessing_config = None
-
-    def encode(self, raw_texts: str):
-        if self.tokenizer:
-            if self.preprocessing_config:
-                encoded_batch = self.tokenizer(
-                            raw_texts,
-                            **self.preprocessing_config
-                    )
-            else:
-                assert "Tokenizer preprocessing configuration must be defined, call from_pretrained()"
-        else:
-            assert "Tokenizer is not define, call from_pretrained()"
-        return encoded_batch["input_ids"], encoded_batch["attention_mask"]
-
-    def encode_plus(self, raw_texts: str, ):
-        if self.tokenizer:
-            if self.preprocessing_config:
-                encoded_batch = self.tokenizer.encode_plus(
-                            raw_texts,
-                            **self.preprocessing_config
-                    )
-            else:
-                assert "Tokenizer preprocessing configuration must be defined, call from_pretrained()"
-        else:
-            assert "Tokenizer is not define, call from_pretrained()"
-
-        return encoded_batch
 
 
 class HFModelForClassification(AutoModelForSequenceClassification):
@@ -376,7 +279,6 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
             "multilabel":self.multilabel
         }
 
-        #torch.save(config, os.path.join(save_directory, "config.pth"))
         with open(os.path.join(save_directory, "config.json"), "w") as f:
             json.dump(config, f)
 
@@ -443,7 +345,12 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
         super(BeeCustomMaskModelForClassification, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
+        self.classes_names = []
+        self.multilabel = None
         self.layer_configs = layer_configs
+
+        self.hftokenizer = None
+        self.model_directory = ""
 
     def from_pretrained(self, quantization_config: Optional[BitsAndBytesConfig] = None ):
 
@@ -501,6 +408,7 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
 
         return nn.Sequential(*layers)
 
+
     def forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None, labels: torch.Tensor = None,
                 inputs_embeds: Optional[torch.FloatTensor] = None,
                 output_attentions: Optional[bool] = None,
@@ -534,6 +442,130 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
 
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
 
+
+    def predict(self, raw_texts: List[str], hftokenizer: Optional[HFTokenizer] = None, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5):
+        """
+        Perform predictions on raw text inputs using the model.
+
+        This function tokenizes the input text data, processes it through the model in batches, and returns either
+        class probabilities or predictions. Supports multi-class and multi-label classification based on the model configuration.
+
+        Args:
+            raw_texts (List[str]): A list of raw text strings to be classified.
+            hftokenizer (Optional[HFTokenizer]): An optional tokenizer instance. If not provided, it attempts to use
+                `self.hftokenizer` or loads a tokenizer based on `self.model_name`.
+            return_probabilities (bool): If True, the function returns class probabilities. Otherwise, it returns
+                predicted class labels (for multi-class) or binary predictions (for multi-label).
+            batch_size (int): Number of samples to process per batch during prediction. Defaults to 32.
+            num_workers (int): Number of parallel worker processes for batch processing (CPU only). Defaults to
+                `None`, which uses all available CPU cores minus one.
+            threshold (float): The threshold for binary predictions in multi-label classification. Defaults to 0.5.
+
+        Returns:
+            List: The predictions for the input texts. The output format depends on `return_probabilities` and
+            the model type:
+                - Multi-class: Returns a list of predicted class indices or probabilities.
+                - Multi-label: Returns a list of binary predictions (per label) or probabilities.
+        
+        Raises:
+            AssertionError: If no tokenizer is found and cannot be loaded for the given model name.
+
+        Example:
+            >>> model = BeeSimpleMaskModelForClassification(model_name="bert-base-uncased", num_labels=3)
+            >>> raw_texts = ["This is a positive example.", "This is a negative example."]
+            >>> predictions = model.predict(raw_texts, batch_size=16)
+            >>> print(predictions)
+            [0, 2]
+
+            >>> probabilities = model.predict(raw_texts, return_probabilities=True, batch_size=16)
+            >>> print(probabilities)
+            [[0.8, 0.1, 0.1], [0.2, 0.7, 0.1]]
+        """
+
+        # Get/Load the tokenizer
+        if hftokenizer is None:
+            if self.hftokenizer is None:
+                hftokenizer = HFTokenizer().from_pretrained(self.model_name, model_directory=self.model_directory)
+                if hftokenizer.tokenizer is None:
+                    assert f"No tokenizer found for the model name : {self.model_name}"
+                else:
+                    self.hftokenizer = hftokenizer
+        else:
+            self.hftokenizer = hftokenizer
+
+        # Encode row texts list
+        input_ids, attention_mask = self.hftokenizer.encode(raw_texts)
+
+        # Get model raw predictions
+        ret = self._raw_predict(input_ids, attention_mask, return_probabilities, batch_size, num_workers, threshold)
+
+        return ret
+
+
+    def process_batch(self, batch_input_ids, batch_attention_mask):
+        """Process a single batch and return predictions or probabilities."""
+        with torch.no_grad():  # Disable gradient computation
+            outputs = self.forward(input_ids=batch_input_ids, attention_mask=batch_attention_mask)
+            logits = outputs.logits
+
+            if self.multilabel:
+                # Multi-label classification
+                probs = torch.sigmoid(logits)  # Apply sigmoid for probabilities
+                if self.return_probabilities:
+                    return probs.cpu()  # Return probabilities
+                else:
+                    # Apply threshold to generate binary predictions
+                    return (probs > self.threshold).int().cpu()
+            else:
+                # Multi-class classification
+                if self.return_probabilities:
+                    # Convert logits to probabilities using softmax
+                    return softmax(logits, dim=-1).cpu()
+                else:
+                    # Convert logits to class labels using argmax
+                    return torch.argmax(logits, dim=-1).cpu()
+
+
+    def _raw_predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5):
+        """
+        Perform batched prediction on input data, supporting multi-label and multi-class classification.
+
+        Args:
+            input_ids (torch.Tensor): Tokenized input IDs.
+            attention_mask (torch.Tensor): Attention mask.
+            return_probabilities (bool): If True, return probabilities instead of class labels.
+            batch_size (int): Number of samples to process per batch.
+            num_workers (int): Number of parallel processes to use.
+            threshold (float): Threshold for binary predictions in multi-label classification.
+
+        Returns:
+            list: Predicted class labels, probabilities, or binary predictions for multi-label classification.
+        """
+        self.eval()  # Set model to evaluation mode
+
+        self.multilabel = False
+        self.threshold = threshold
+        self.return_probabilities = return_probabilities
+
+        if num_workers is None:
+            num_workers = max(1, cpu_count() - 1)
+
+        # Create batches
+        batches = [
+            (input_ids[i:i + batch_size], attention_mask[i:i + batch_size])
+            for i in range(0, len(input_ids), batch_size)
+        ]
+
+        # Parallel processing with joblib
+        results = Parallel(n_jobs=num_workers)(
+            delayed(self.process_batch)(batch_input_ids, batch_attention_mask)
+            for batch_input_ids, batch_attention_mask in batches
+        )
+
+        # Concatenate results from all batches
+        return torch.cat(results, dim=0).tolist()
+
+
     def save_model_safetensors(self, save_directory: str):
         """
         Saves the model using safetensors format.
@@ -551,16 +583,25 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
         # Save weights using safetensors
         save_file(weights, os.path.join(save_directory, "model.safetensors"))
 
+        # Manage JSON serialization
+        if isinstance(self.classes_names, np.ndarray):
+            classes_names = self.classes_names.tolist()
+        else:
+            classes_names = self.classes_names
+
         # Save model configuration
         config = {
             "model_name": self.model_name,
             "num_labels": self.num_labels,
+            "classes_names": classes_names,
+            "multilabel":self.multilabel,            
             "layer_configs": self.layer_configs,
         }
 
         # torch.save(config, os.path.join(save_directory, "config.pth"))
         with open(os.path.join(save_directory, "config.json"), "w") as f:
             json.dump(config, f)
+
 
     @classmethod
     def load_model_safetensors(cls, save_directory: str):
@@ -580,10 +621,21 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
 
         model_name = config["model_name"]
         num_labels = config["num_labels"]
+        multilabel = config["multilabel"]
+        classes_names = config["classes_names"]
         layer_configs = config["layer_configs"]
+
+        # Manage JSON serialization
+        if isinstance(classes_names, list):
+            classes_names = np.array(classes_names)
 
         # Initialize the model
         model = cls(model_name=model_name, num_labels=num_labels, layer_configs=layer_configs)
+
+        # Create model        
+        model.model_directory = save_directory
+        model.multilabel = multilabel
+        model.classes_names = classes_names
         model.from_pretrained()  # Load the base model
 
         # Load the weights from safetensors
