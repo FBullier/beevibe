@@ -45,7 +45,8 @@ class HFTokenizer:
 
         # Load preprocessing config if needed from model path
         if self.preprocessing_config is None:
-            self.preprocessing_config = self.load_config(model_name)
+            model_directory = kwargs.get("model_directory")
+            self.load_config(model_directory)
             if self.preprocessing_config is None:
                 assert "Tokenizer preprocessing configuration is not define"
 
@@ -78,15 +79,12 @@ class HFTokenizer:
 
     def load_config(self, path):
         try:
-            print("*********************************")
-            print(f"{path}/preprocessing_config.json")
             with open(f"{path}/preprocessing_config.json", "r") as f:
-                self.preprocessing_config = json.load(f)
-            print("*********************************")
+                self.preprocessing_config = json.load(f)           
         except FileNotFoundError:
             self.preprocessing_config = None
 
-    def encode(self, raw_texts: str, ):
+    def encode(self, raw_texts: str):
         if self.tokenizer:
             if self.preprocessing_config:
                 encoded_batch = self.tokenizer(
@@ -100,7 +98,6 @@ class HFTokenizer:
         return encoded_batch["input_ids"], encoded_batch["attention_mask"]
 
     def encode_plus(self, raw_texts: str, ):
-        
         if self.tokenizer:
             if self.preprocessing_config:
                 encoded_batch = self.tokenizer.encode_plus(
@@ -172,6 +169,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         self.model_name = model_name
         self.num_labels = num_labels
         self.hftokenizer = None
+        self.model_directory = ""
 
     def from_pretrained(self, quantization_config: Optional[BitsAndBytesConfig] = None ):
 
@@ -261,7 +259,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         # Get/Load the tokenizer
         if hftokenizer is None:
             if self.hftokenizer is None:
-                hftokenizer = HFTokenizer().from_pretrained(self.model_name)
+                hftokenizer = HFTokenizer().from_pretrained(self.model_name, model_directory=self.model_directory)
                 if hftokenizer.tokenizer is None:
                     assert f"No tokenizer found for the model name : {self.model_name}"
                 else:
@@ -371,8 +369,6 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         with open(os.path.join(save_directory, "config.json"), "w") as f:
             json.dump(config, f)
 
-        print(f"Model saved in Safetensors format to {save_directory}")
-
     @classmethod
     def load_model_safetensors(cls, save_directory: str):
         """
@@ -389,11 +385,14 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         with open(os.path.join(save_directory, "config.json"), "r") as f:
             config = json.load(f)
 
-        model_name = save_directory #config["model_name"]
+        model_name = config["model_name"]
         num_labels = config["num_labels"]
 
         # Initialize the model
         model = cls(model_name=model_name, num_labels=num_labels)
+
+        # Create model        
+        model.model_directory = save_directory
         model.from_pretrained()  # Load the base model
 
         # Load the weights from safetensors
@@ -405,7 +404,6 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         model.base_model.load_state_dict(base_model_weights, strict=True)
         model.classifier.load_state_dict(classifier_weights, strict=True)
 
-        print(f"Model loaded from Safetensors format in {save_directory}")
         return model
 
 
