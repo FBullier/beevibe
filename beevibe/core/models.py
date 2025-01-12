@@ -97,6 +97,19 @@ class HFTokenizer:
             assert "Tokenizer is not define, call from_pretrained()"            
         return encoded_batch["input_ids"], encoded_batch["attention_mask"]
 
+    def encode_plus(self, raw_texts: str, ):
+        if self.tokenizer:
+            if self.preprocessing_config:
+                encoded_batch = self.tokenizer.encode_plus(
+                            raw_texts,
+                            **self.preprocessing_config
+                    )
+            else:
+                assert "Tokenizer preprocessing configuration must be defined, call from_pretrained()"
+        else:
+            assert "Tokenizer is not define, call from_pretrained()"            
+        return encoded_batch["input_ids"], encoded_batch["attention_mask"]
+
 
 class HFModelForClassification(AutoModelForSequenceClassification):
     """

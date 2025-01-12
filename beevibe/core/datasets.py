@@ -8,11 +8,11 @@ class TextDatasetMC(Dataset):
     Attributes:
         texts (list of str): The list of text samples.
         labels (list of int): The list of corresponding labels.
-        tokenizer (transformers.PreTrainedTokenizer): Tokenizer to preprocess the text samples.
-        max_len (int): Maximum sequence length for tokenization.
+        hftokenizer (bee.models.HFTokenizer): Tokenizer to preprocess the text samples.
+        #max_len (int): Maximum sequence length for tokenization.
     """
 
-    def __init__(self, texts: list[str], labels: list[int], tokenizer, max_len: int = 128):
+    def __init__(self, texts: list[str], labels: list[int], tokenizer): #, max_len: int = 128):
         """
         Initializes the TextDatasetMC class with the given texts, labels, tokenizer, and maximum sequence length.
 
@@ -25,7 +25,7 @@ class TextDatasetMC(Dataset):
         self.texts = texts
         self.labels = labels
         self.tokenizer = tokenizer
-        self.max_len = max_len
+        #self.max_len = max_len
 
     def __len__(self) -> int:
         """
@@ -48,16 +48,18 @@ class TextDatasetMC(Dataset):
         """
         text = self.texts[idx]
         label = self.labels[idx]
-        encoding = self.tokenizer.encode_plus(
-            text,
-            add_special_tokens=True,
-            truncation=True,
-            padding="max_length",
-            max_length=self.max_len,
-            return_token_type_ids=False,
-            return_attention_mask=True,
-            return_tensors="pt",
-        )
+        encoding = self.hftokenizer.encode_plus(text)
+
+        #encoding = self.tokenizer.encode_plus(
+        #    text,
+        #    add_special_tokens=True,
+        #    truncation=True,
+        #    padding="max_length",
+        #    max_length=self.max_len,
+        #    return_token_type_ids=False,
+        #    return_attention_mask=True,
+        #    return_tensors="pt",
+        #)
 
         return {
             "text": text,
@@ -66,6 +68,7 @@ class TextDatasetMC(Dataset):
             "label": torch.tensor(label, dtype=torch.long),
         }
 
+# <TODO > Appel du tokenizer à modifier comme dans la classe TextDatasetMC()
 class TextDatasetML(Dataset):
     """
     A Dataset class for multi-label text classification.

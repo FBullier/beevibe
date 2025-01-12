@@ -121,17 +121,7 @@ class MultiClassTrainer:
         self.max_len = max_len
         self.lr = lr
         self.multilabel = multilabel
-
-        # Tokenizer preprocessing configuration
-        self.preprocessing_config = {
-            "add_special_tokens": True,
-            "truncation": True,
-            "padding": "max_length",
-            "max_length": self.max_len,
-            "return_token_type_ids": False,
-            "return_attention_mask": True,
-            "return_tensors": "pt",
-        }
+        self.hftokenizer = None
 
         # Quantization paramaters
         if quantization_type is not None:
@@ -438,8 +428,22 @@ class MultiClassTrainer:
         """
         Initialize the tokenizer using a pre-trained Hugging Face tokenizer.
         """
-        self.tokenizer = HFTokenizer().from_pretrained(
-            self.model_name, clean_up_tokenization_spaces=True
+
+        # Tokenizer parameters
+        preprocessing_config = {
+            "add_special_tokens": True,
+            "truncation": True,
+            "padding": "max_length",
+            "max_length": self.max_len,
+            "return_token_type_ids": False,
+            "return_attention_mask": True,
+            "return_tensors": "pt",
+        }
+
+        # Get or load tokenizer
+        self.hftokenizer = HFTokenizer(preprocessing_config).from_pretrained(
+            self.model_name, 
+            clean_up_tokenization_spaces=True
         )
 
     def set_seed(self, seed: int = 1811) -> None:
@@ -991,11 +995,11 @@ class MultiClassTrainer:
 
         if self.multilabel:
             train_dataset = TextDatasetML(
-                train_texts, train_labels, self.tokenizer, self.max_len
+                train_texts, train_labels, self.hftokenizer.tokenizer, self.max_len
             )
         else:
             train_dataset = TextDatasetMC(
-                train_texts, train_labels, self.tokenizer, self.max_len
+                train_texts, train_labels, self.hftokenizer.tokenizer, self.max_len
             )
 
         train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
@@ -1024,10 +1028,15 @@ class MultiClassTrainer:
         #    path=path
         #    )
 
-        self.tokenizer.save_pretrained(path)
-        with open(f"{path}/preprocessing_config.json", "w") as f:
-            json.dump(self.preprocessing_config, f)
+        # Save tokenizer and configuration
+        self.hftokenizer.save_pretrained(path)
+        self.hftokenizer.save_config(path)
 
+        #with open(f"{path}/preprocessing_config.json", "w") as f:
+        #    json.dump(self.preprocessing_config, f)
+
+        # Merge and save model
+        # <**> IS THERE ALWAYS A LORA ADAPTATER ?
         merged_model = self.model.merge_and_unload()
         merged_model.save_model_safetensors(path)
 
@@ -1044,31 +1053,13 @@ class MultiClassTrainer:
         #    path=path
         #    )
 
+        # <TODO> possible de sauvegarder le modèle original + adaptater + config
+        # <TODO> ensuite il faudra pouvoir les recharger à partir du modèle
         if self.use_lora:
             peft_model = PeftModel(self.model, self.lora_config)
             peft_model.save_pretrained(path)
         else:
             self.logger_info("The adapter does not appear to be utilized during model training.")
-
-
-    def __preprocess(self, raw_reviews: List[str]) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Preprocess input text samples for the model.
-
-        Args:
-            raw_reviews (List[str]): List of raw text inputs.
-            max_len (int): Maximum sequence length for tokenization (default: 128).
-
-        Returns:
-            Tuple[torch.Tensor, torch.Tensor]: Tokenized input IDs and attention masks.
-        """
-
-        encoded_batch = self.tokenizer(
-            raw_reviews,
-            **self.preprocessing_config
-        )
-
-        return encoded_batch["input_ids"], encoded_batch["attention_mask"]
 
 
     def holdout(
@@ -1126,17 +1117,17 @@ class MultiClassTrainer:
 
         if self.multilabel:
             train_dataset = TextDatasetML(
-                train_texts, train_labels, self.tokenizer, self.max_len
+                train_texts, train_labels, self.hftokenizer.tokenizer, self.max_len
             )
             val_dataset = TextDatasetML(
-                val_texts, val_labels, self.tokenizer, self.max_len
+                val_texts, val_labels, self.hftokenizer.tokenizer, self.max_len
             )
         else:
             train_dataset = TextDatasetMC(
-                train_texts, train_labels, self.tokenizer, self.max_len
+                train_texts, train_labels, self.hftokenizer.tokenizer, self.max_len
             )
             val_dataset = TextDatasetMC(
-                val_texts, val_labels, self.tokenizer, self.max_len
+                val_texts, val_labels, self.hftokenizer.tokenizer, self.max_len
             )
 
         train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
@@ -1237,17 +1228,17 @@ class MultiClassTrainer:
 
             if self.multilabel:
                 train_dataset = TextDatasetML(
-                    train_texts, train_labels, self.tokenizer, self.max_len
+                    train_texts, train_labels, self.hftokenizer.tokenizer, self.max_len
                 )
                 val_dataset = TextDatasetML(
-                    val_texts, val_labels, self.tokenizer, self.max_len
+                    val_texts, val_labels, self.hftokenizer.tokenizer, self.max_len
                 )
             else:
                 train_dataset = TextDatasetMC(
-                    train_texts, train_labels, self.tokenizer, self.max_len
+                    train_texts, train_labels, self.hftokenizer.tokenizer, self.max_len
                 )
                 val_dataset = TextDatasetMC(
-                    val_texts, val_labels, self.tokenizer, self.max_len
+                    val_texts, val_labels, self.hftokenizer.tokenizer, self.max_len
                 )
 
             train_loader = DataLoader(
