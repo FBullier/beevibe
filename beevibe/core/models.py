@@ -78,8 +78,11 @@ class HFTokenizer:
 
     def load_config(self, path):
         try:
+            print("*********************************")
+            print(f"{path}/preprocessing_config.json")
             with open(f"{path}/preprocessing_config.json", "r") as f:
                 self.preprocessing_config = json.load(f)
+            print("*********************************")
         except FileNotFoundError:
             self.preprocessing_config = None
 
@@ -274,6 +277,28 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
 
         return ret
 
+    def process_batch(self, batch_input_ids, batch_attention_mask):
+        """Process a single batch and return predictions or probabilities."""
+        with torch.no_grad():  # Disable gradient computation
+            outputs = self.forward(input_ids=batch_input_ids, attention_mask=batch_attention_mask)
+            logits = outputs.logits
+
+            if self.multilabel:
+                # Multi-label classification
+                probs = torch.sigmoid(logits)  # Apply sigmoid for probabilities
+                if self.return_probabilities:
+                    return probs.cpu()  # Return probabilities
+                else:
+                    # Apply threshold to generate binary predictions
+                    return (probs > threshold).int().cpu()
+            else:
+                # Multi-class classification
+                if self.return_probabilities:
+                    # Convert logits to probabilities using softmax
+                    return softmax(logits, dim=-1).cpu()
+                else:
+                    # Convert logits to class labels using argmax
+                    return torch.argmax(logits, dim=-1).cpu()
 
     def _raw_predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5):
         """
@@ -292,32 +317,12 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         """
         self.eval()  # Set model to evaluation mode
 
+        self.threshold = threshold
+        self.return_probabilities = return_probabilities
+
         # Default to the number of available CPU cores minus one
         if num_workers is None:
             num_workers = max(1, cpu_count() - 1)
-
-        def process_batch(batch_input_ids, batch_attention_mask):
-            """Process a single batch and return predictions or probabilities."""
-            with torch.no_grad():  # Disable gradient computation
-                outputs = self.forward(input_ids=batch_input_ids, attention_mask=batch_attention_mask)
-                logits = outputs.logits
-
-                if self.multilabel:
-                    # Multi-label classification
-                    probs = torch.sigmoid(logits)  # Apply sigmoid for probabilities
-                    if return_probabilities:
-                        return probs.cpu()  # Return probabilities
-                    else:
-                        # Apply threshold to generate binary predictions
-                        return (probs > threshold).int().cpu()
-                else:
-                    # Multi-class classification
-                    if return_probabilities:
-                        # Convert logits to probabilities using softmax
-                        return softmax(logits, dim=-1).cpu()
-                    else:
-                        # Convert logits to class labels using argmax
-                        return torch.argmax(logits, dim=-1).cpu()
 
         # Create batches
         batches = [
@@ -329,11 +334,11 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
             # Process batches sequentially for GPU (CUDA tensors cannot be shared across processes)
             results = []
             for batch_input_ids, batch_attention_mask in batches:
-                results.append(process_batch(batch_input_ids, batch_attention_mask))
+                results.append(self.process_batch(batch_input_ids, batch_attention_mask))
         else:
             # Use multiprocessing for CPU
             with Pool(processes=num_workers) as pool:
-                results = pool.starmap(process_batch, batches)
+                results = pool.starmap(self.process_batch, batches)
 
         # Concatenate results from all batches
         return torch.cat(results, dim=0).tolist()
@@ -384,7 +389,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         with open(os.path.join(save_directory, "config.json"), "r") as f:
             config = json.load(f)
 
-        model_name = config["model_name"]
+        model_name = save_directory #config["model_name"]
         num_labels = config["num_labels"]
 
         # Initialize the model
