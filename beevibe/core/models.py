@@ -150,7 +150,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
             the model type:
                 - Multi-class: Returns a list of predicted class indices or probabilities.
                 - Multi-label: Returns a list of binary predictions (per label) or probabilities.
-        
+
         Raises:
             AssertionError: If no tokenizer is found and cannot be loaded for the given model name.
 
@@ -310,7 +310,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         # Initialize the model
         model = cls(model_name=model_name, num_labels=num_labels)
 
-        # Create model        
+        # Create model
         model.model_directory = save_directory
         model.multilabel = multilabel
         model.classes_names = classes_names
@@ -466,7 +466,7 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
             the model type:
                 - Multi-class: Returns a list of predicted class indices or probabilities.
                 - Multi-label: Returns a list of binary predictions (per label) or probabilities.
-        
+
         Raises:
             AssertionError: If no tokenizer is found and cannot be loaded for the given model name.
 
@@ -594,7 +594,7 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
             "model_name": self.model_name,
             "num_labels": self.num_labels,
             "classes_names": classes_names,
-            "multilabel":self.multilabel,            
+            "multilabel":self.multilabel,
             "layer_configs": self.layer_configs,
         }
 
@@ -632,7 +632,7 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
         # Initialize the model
         model = cls(model_name=model_name, num_labels=num_labels, layer_configs=layer_configs)
 
-        # Create model        
+        # Create model
         model.model_directory = save_directory
         model.multilabel = multilabel
         model.classes_names = classes_names

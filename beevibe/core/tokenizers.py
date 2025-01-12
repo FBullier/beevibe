@@ -1,6 +1,6 @@
 import json
 from transformers import AutoTokenizer
-from typing import Optional, List
+from typing import Optional
 
 class HFTokenizer:
     """
@@ -67,7 +67,7 @@ class HFTokenizer:
     def load_config(self, path):
         try:
             with open(f"{path}/preprocessing_config.json", "r") as f:
-                self.preprocessing_config = json.load(f)           
+                self.preprocessing_config = json.load(f)
         except FileNotFoundError:
             self.preprocessing_config = None
 

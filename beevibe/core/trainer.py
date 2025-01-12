@@ -1035,12 +1035,11 @@ class MultiClassTrainer:
         self.hftokenizer.save_pretrained(path)
         self.hftokenizer.save_config(path)
 
-        #with open(f"{path}/preprocessing_config.json", "w") as f:
-        #    json.dump(self.preprocessing_config, f)
+        # Merge and save model with Lora
+        if self.use_lora:
+            merged_model = self.model.merge_and_unload()
 
-        # Merge and save model
-        # <**> IS THERE ALWAYS A LORA ADAPTATER ?
-        merged_model = self.model.merge_and_unload()
+        # Save the model in safetensors
         merged_model.save_model_safetensors(path)
 
 

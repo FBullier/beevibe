@@ -9,13 +9,12 @@
 ## 🐝 **About Beevibe**
 Beevibe is a Python package designed to make it easier to train advanced language models on text datasets with specific themes and perform accurate inference on new sentences. Beevibe is built to empower developers and researchers with tools that are efficient, intuitive, and scalable.
 
-Beevibe leverages modern AI features to simplify workflows and enhance user experience. It integrates:
+Beevibe leverages modern features to simplify workflows and enhance user experience. It integrates:
 
 - Energy-efficient training using QLoRA.
 - Seamless creation of classification heads.
 - High-level functions to manage holdout and cross-validation.
 - Example-guided workflows to streamline onboarding.
-- OpenAI API integration for intelligent interactions.
 
 ---
 
@@ -26,7 +25,10 @@ Beevibe leverages modern AI features to simplify workflows and enhance user expe
   - OpenAI integration for modern interaction.
   - Proposal of result interpretation
   - Automated classification head creation .
-- **Tutorial-Ready**: Comes with synthetic datasets for Elegana Customer Relationship Management and comprehensive tutorials for CamemBERT, CamemBERTV2, and ModernBERT, covering binary, multi-class, and multi-label classification.
+- **Tutorial-Ready**: 
+  - Comes with synthetic datasets for Elegana Customer Relationship Management 
+  - Covering binary, multi-class, and multi-label classification.
+  - Comprehensive tutorials for CamemBERT, CamemBERTV2, and ModernBERT, 
 - **Streamlined Development**:
   - Supports GitHub Codespaces and VSCode for development.
   - Colab integration for GPU testing.
