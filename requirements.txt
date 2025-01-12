@@ -13,3 +13,4 @@ seaborn
 matplotlib
 pydantic
 openai
+joblib

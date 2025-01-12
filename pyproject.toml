@@ -24,7 +24,8 @@ dependencies = [
     "seaborn",
     "matplotlib",
     "pydantic",
-    "openai"
+    "openai",
+    "joblib"
 ]
 
 [project.optional-dependencies]

@@ -1,12 +1,16 @@
 import os
 import json
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn.functional import softmax
 from safetensors.torch import save_file, load_file
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 from transformers import BitsAndBytesConfig
-from multiprocessing import Pool, cpu_count
+#from multiprocessing import Pool, cpu_count
+from multiprocessing import cpu_count
+from joblib import Parallel, delayed
+
 import transformers
 from typing import Optional, List
 
@@ -168,6 +172,9 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         super(BeeSimpleMaskModelForClassification, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
+        self.classes_names = []
+        self.multilabel = None
+
         self.hftokenizer = None
         self.model_directory = ""
 
@@ -288,7 +295,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
                     return probs.cpu()  # Return probabilities
                 else:
                     # Apply threshold to generate binary predictions
-                    return (probs > threshold).int().cpu()
+                    return (probs > self.threshold).int().cpu()
             else:
                 # Multi-class classification
                 if self.return_probabilities:
@@ -307,7 +314,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
             attention_mask (torch.Tensor): Attention mask.
             return_probabilities (bool): If True, return probabilities instead of class labels.
             batch_size (int): Number of samples to process per batch.
-            num_workers (int): Number of parallel processes to use (defaults to number of CPU cores minus one).
+            num_workers (int): Number of parallel processes to use.
             threshold (float): Threshold for binary predictions in multi-label classification.
 
         Returns:
@@ -315,10 +322,10 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         """
         self.eval()  # Set model to evaluation mode
 
+        self.multilabel = False
         self.threshold = threshold
         self.return_probabilities = return_probabilities
 
-        # Default to the number of available CPU cores minus one
         if num_workers is None:
             num_workers = max(1, cpu_count() - 1)
 
@@ -328,15 +335,11 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
             for i in range(0, len(input_ids), batch_size)
         ]
 
-        if torch.cuda.is_available():
-            # Process batches sequentially for GPU (CUDA tensors cannot be shared across processes)
-            results = []
-            for batch_input_ids, batch_attention_mask in batches:
-                results.append(self.process_batch(batch_input_ids, batch_attention_mask))
-        else:
-            # Use multiprocessing for CPU
-            with Pool(processes=num_workers) as pool:
-                results = pool.starmap(self.process_batch, batches)
+        # Parallel processing with joblib
+        results = Parallel(n_jobs=num_workers)(
+            delayed(self.process_batch)(batch_input_ids, batch_attention_mask)
+            for batch_input_ids, batch_attention_mask in batches
+        )
 
         # Concatenate results from all batches
         return torch.cat(results, dim=0).tolist()
@@ -359,10 +362,18 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         # Save weights using safetensors
         save_file(weights, os.path.join(save_directory, "model.safetensors"))
 
+        # Manage JSON serialization
+        if isinstance(self.classes_names, np.ndarray):
+            classes_names = self.classes_names.tolist()
+        else:
+            classes_names = self.classes_names
+
         # Save model configuration
         config = {
             "model_name": self.model_name,
             "num_labels": self.num_labels,
+            "classes_names": classes_names,
+            "multilabel":self.multilabel
         }
 
         #torch.save(config, os.path.join(save_directory, "config.pth"))
@@ -387,12 +398,20 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
 
         model_name = config["model_name"]
         num_labels = config["num_labels"]
+        multilabel = config["multilabel"]
+        classes_names = config["classes_names"]
+
+        # Manage JSON serialization
+        if isinstance(classes_names, list):
+            classes_names = np.array(classes_names)
 
         # Initialize the model
         model = cls(model_name=model_name, num_labels=num_labels)
 
         # Create model        
         model.model_directory = save_directory
+        model.multilabel = multilabel
+        model.classes_names = classes_names
         model.from_pretrained()  # Load the base model
 
         # Load the weights from safetensors

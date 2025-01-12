@@ -164,6 +164,8 @@ class MultiClassTrainer:
         if isinstance(model, BeeBaseModel):
             self.model = model
             self.model_name = self.model.model_name
+            self.model.classes_names = self.classes_names
+            self.model.multilabel = self.multilabel
         elif isinstance(model, str):
             self.model_name = model
             self.model = self.model_name
