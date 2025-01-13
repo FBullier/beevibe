@@ -6,7 +6,6 @@ import gc
 
 import torch
 import torch.nn as nn
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
@@ -238,23 +237,7 @@ class MultiClassTrainer:
         if self.verbose:
             self.logger.info(message)
 
-    ## NOT USED ANYMORE
-    def default_model_creator(self, model_name: str, num_classes: int) -> nn.Module:
-        """
-        Default function to create a classification model using a pre-trained Hugging Face model.
 
-        Args:
-            model_name (str): Name of the pre-trained model.
-            num_classes (int): Number of output classes.
-
-        Returns:
-            nn.Module: A classification model.
-        """
-        return HFModelForClassification().from_pretrained(
-            model_name=model_name, num_labels=num_classes
-        )
-
-    ## NEW Optimizer function
     def optimizer_creator(self, optimizer_class, model: nn.Module, **params: Any) -> torch.optim.Optimizer:
         """
         Default function to create an Adam optimizer.
@@ -272,23 +255,6 @@ class MultiClassTrainer:
         params["params"] = model.parameters()
 
         return optimizer_class(**params)
-
-    ## NOT USED ANYMORE
-    def default_optimizer_creator(self, model: nn.Module, **params: Any) -> torch.optim.Optimizer:
-        """
-        Default function to create an Adam optimizer.
-
-        Args:
-            model (nn.Module): The model for which to create the optimizer.
-            **params: Additional parameters for the optimizer.
-
-        Returns:
-            torch.optim.Optimizer: An Adam optimizer.
-        """
-        self.logger_info("Call default optimizer :")
-        self.logger_info(f" - lr:{params.get('lr', 1e-5)}")
-
-        return Adam(model.parameters(), lr=params.get("lr", 1e-5))
 
 
     def scheduler_creator(self, scheduler_class, optimizer: torch.optim.Optimizer, **params: Any) -> Any:
@@ -308,12 +274,14 @@ class MultiClassTrainer:
         params["optimizer"] = optimizer
         return scheduler_class(**params)
 
+
     def __find_target_modules(self, model):
         target_modules = []
         for name, module in model.named_modules():
             if any(keyword in name for keyword in ["query", "key", "dense"]):
                 target_modules.append(name)
         return target_modules
+
 
     def __print_trainable_parameters(self, model):
         """
@@ -328,6 +296,7 @@ class MultiClassTrainer:
 
         formatted_string = f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param}"
         self.logger_info(formatted_string)
+
 
     def __init_model(self) -> None:
         """

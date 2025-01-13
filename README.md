@@ -9,22 +9,19 @@
 ## 🐝 **About Beevibe**
 Beevibe is a Python package designed to make it easier to train advanced language models on text datasets with specific themes and perform accurate inference on new sentences. Beevibe is built to empower developers and researchers with tools that are efficient, intuitive, and scalable.
 
-Beevibe leverages modern features to simplify workflows and enhance user experience. It integrates:
-
-- Energy-efficient training using QLoRA.
-- Seamless creation of classification heads.
-- High-level functions to manage holdout and cross-validation.
-- Example-guided workflows to streamline onboarding.
+Beevibe leverages modern features to simplify workflows and enhance user experience. 
 
 ---
 
 ## ✨ **Features**
 
+It integrates:
+
 - **Simplified Usage**: Designed for simplicity and efficiency, making it lightweight and easy to use.
-- **AI-Powered Functionalities**:
-  - OpenAI integration for modern interaction.
-  - Proposal of result interpretation
-  - Automated classification head creation .
+- **Powered Functionalities**:
+  - Energy-efficient training using QLoRA.
+  - Seamless creation of classification heads.
+  - High-level functions to manage holdout and cross-validation.
 - **Tutorial-Ready**: 
   - Comes with synthetic datasets for Elegana Customer Relationship Management 
   - Covering binary, multi-class, and multi-label classification.
@@ -54,49 +51,48 @@ pip install Beevibe
 Train CamemBERT on your custom thematic dataset:
 
 ```python
-from Beevibe import ModelTrainer
+from Beevibe import BeeCustomMaskModelForClassification, BeeTrainer
+
+# Define classification head
+head_layer_configs = [
+        {"input_size": 768, "output_size": num_classes, "activation": None},
+    ]
+
+# Initialize model
+bv_model = BeeCustomMaskModelForClassification(
+    model_name = "camembert-base",
+    num_labels = 5,
+    layer_configs=head_layer_configs
+)
 
 # Initialize the trainer
-trainer = ModelTrainer(model="camembert-base", dataset="path/to/dataset.csv")
+trainer = BeeTrainer(model=bv_model)
 
 # Train the model
-trainer.train(epochs=3, batch_size=16)
+ret = trainer.train(texts=texts, labels=labels, num_epochs=1)
 
 # Save the trained model
-trainer.save("trained_model")
+trainer.save_model("./sav_model")
+
+# Free CPU/GPU memory
+trainer.release_model()
+
 ```
 
 ### **2. Performing Inference**
 Use the trained model to classify or extract themes from new sentences:
 
 ```python
-from Beevibe import ModelInference
+from Beevibe import BeeCustomMaskModelForClassification
 
 # Load the trained model
-inference = ModelInference("trained_model")
+bv_model = BeeCustomMaskModelForClassification.load_model_safetensors("./sav_model")
 
 # Infer themes for a new sentence
-result = inference.predict("This is a new sentence to classify.")
+result = bv_model.predict(["This is a new sentence to classify."])
 
 print("Predicted Theme:", result)
 ```
-
----
-
-## 📚 **Documentation**
-
-Comprehensive documentation is available [here](https://github.com/fbullier/Beevibe/wiki) with detailed guides, API references, and examples.
-
----
-
-## 🤝 **Contributing**
-
-We welcome contributions! To contribute:
-1. Fork the repository.
-2. Create a new branch for your feature (`git checkout -b feature-name`).
-3. Commit your changes (`git commit -m "Added feature"`).
-4. Push the branch (`git push origin feature-name`).
-5. Open a Pull Request.
 
 ---
 
@@ -113,7 +109,7 @@ If you use Beevibe in your research, projects, or publications, please cite it a
 ```
 @misc{Beevibe2024,
   title={Beevibe: Feel the vibe of building smarter models},
-  author={The Beevibe Team},
+  author={François Bullier},
   year={2024},
   url={https://github.com/fbullier/Beevibe},
   note={Version 0.1}

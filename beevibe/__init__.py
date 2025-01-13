@@ -9,7 +9,7 @@ from .core.trainer import EarlyStopping
 from .core.trainer import MultiClassTrainer
 from .core.datasets import TextDatasetMC
 from .core.datasets import TextDatasetML
-from .core.models import HFTokenizer
+from .core.tokenizers import HFTokenizer
 from .core.models import HFModelForClassification
 from .core.models import BeeSimpleMaskModelForClassification
 from .core.models import BeeCustomMaskModelForClassification
@@ -22,7 +22,7 @@ from .ai.openai_interface import AIHelper
 
 # Package metadata
 __version__ = "0.1.0"
-__author__ = "BeeVibe Authors"
+__author__ = "François Bullier"
 __license__ = "MIT"
 __all__ = [
     "EarlyStopping",
