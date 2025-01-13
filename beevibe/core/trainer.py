@@ -50,7 +50,7 @@ class MultiClassTrainer:
         classes_names: List[str] = [],
         model="camembert-base",
         optimizer_class=Adam,
-        scheduler_class=ReduceLROnPlateau,
+        scheduler_class=None,
         max_len: int = 128,
         lr: float = 1e-5,
         multilabel: bool = False,
@@ -177,7 +177,7 @@ class MultiClassTrainer:
         self.optimizer_class = optimizer_class
         self.optimizer_params = optimizer_params
 
-        # Get Schedumer class and parameters (set default to ReduceLROnPlateau)
+        # Get Scheduler class and parameters (set default to ReduceLROnPlateau)
         self.scheduler_class = scheduler_class
         self.scheduler_params = scheduler_params
         self.scheduler_needs_loss = scheduler_needs_loss
@@ -291,7 +291,6 @@ class MultiClassTrainer:
         return Adam(model.parameters(), lr=params.get("lr", 1e-5))
 
 
-    ## NEW Scheduler function
     def scheduler_creator(self, scheduler_class, optimizer: torch.optim.Optimizer, **params: Any) -> Any:
         """
         Default function to create a learning rate scheduler.
@@ -308,30 +307,6 @@ class MultiClassTrainer:
 
         params["optimizer"] = optimizer
         return scheduler_class(**params)
-
-    ## NOT USED ANYMORE
-    def default_scheduler_creator(self, optimizer: torch.optim.Optimizer, **params: Any) -> Any:
-        """
-        Default function to create a learning rate scheduler.
-
-        Args:
-            optimizer (torch.optim.Optimizer): The optimizer for which to create the scheduler.
-            **params: Additional parameters for the scheduler.
-
-        Returns:
-            Any: A ReduceLROnPlateau scheduler.
-        """
-        self.logger_info("Call default scheduler :")
-        self.logger_info(f" - mode:{params.get('mode', 'min')}")
-        self.logger_info(f" - factor:{params.get('factor', 0.8)}")
-        self.logger_info(f" - patience:{params.get('patience', 2)}")
-
-        return ReduceLROnPlateau(
-            optimizer,
-            mode=params.get("mode", "min"),
-            factor=params.get("factor", 0.8),
-            patience=params.get("patience", 2),
-        )
 
     def __find_target_modules(self, model):
         target_modules = []
@@ -594,15 +569,16 @@ class MultiClassTrainer:
                     f"Epoch {epoch}/{num_epochs-1}, Training Loss: {total_loss/len(train_loader):.4f}"
                 )
 
-            if self.scheduler_needs_loss:
-                if best_epoch > -1:
-                    self.scheduler.step(best_loss)
+            if self.scheduler_class:
+                if self.scheduler_needs_loss:
+                    if best_epoch > -1:
+                        self.scheduler.step(best_loss)
+                    else:
+                        self.logger_info(
+                            "ReduceLROnPlateau scheduler can't be used without validation losses"
+                        )
                 else:
-                    self.logger_info(
-                        "ReduceLROnPlateau scheduler can't be used without validation losses"
-                    )
-            else:
-                self.scheduler.step()
+                    self.scheduler.step()
 
             end_epoch_time = time.time()
             epochs_duration.append(end_epoch_time - start_epoch_time)
@@ -1055,8 +1031,6 @@ class MultiClassTrainer:
         #    path=path
         #    )
 
-        # <TODO> possible de sauvegarder le modèle original + adaptater + config
-        # <TODO> ensuite il faudra pouvoir les recharger à partir du modèle
         if self.use_lora:
             peft_model = PeftModel(self.model, self.lora_config)
             peft_model.save_pretrained(path)
