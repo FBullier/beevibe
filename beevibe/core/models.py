@@ -4,11 +4,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn.functional import softmax
+from torch.utils.data import DataLoader, TensorDataset
 from safetensors.torch import save_file, load_file
 from transformers import AutoModel, AutoModelForSequenceClassification
 from transformers import BitsAndBytesConfig
 from multiprocessing import cpu_count
-from joblib import Parallel, delayed
 import transformers
 
 from beevibe.core.tokenizers import HFTokenizer
@@ -127,7 +127,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
 
 
-    def predict(self, raw_texts: List[str], hftokenizer: Optional[HFTokenizer] = None, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5):
+    def predict(self, raw_texts: List[str], hftokenizer: Optional[HFTokenizer] = None, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5, device=None):
         """
         Perform predictions on raw text inputs using the model.
 
@@ -181,13 +181,17 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         input_ids, attention_mask = self.hftokenizer.encode(raw_texts)
 
         # Get model raw predictions
-        ret = self._raw_predict(input_ids, attention_mask, return_probabilities, batch_size, num_workers, threshold)
+        ret = self._raw_predict(input_ids, attention_mask, return_probabilities, batch_size, num_workers, threshold, device)
 
         return ret
 
     def process_batch(self, batch_input_ids, batch_attention_mask):
         """Process a single batch and return predictions or probabilities."""
         with torch.no_grad():  # Disable gradient computation
+            # Ensure inputs are on the same device as the model
+            batch_input_ids = batch_input_ids.to(next(self.parameters()).device)
+            batch_attention_mask = batch_attention_mask.to(next(self.parameters()).device)
+
             outputs = self.forward(input_ids=batch_input_ids, attention_mask=batch_attention_mask)
             logits = outputs.logits
 
@@ -208,7 +212,7 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
                     # Convert logits to class labels using argmax
                     return torch.argmax(logits, dim=-1).cpu()
 
-    def _raw_predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5):
+    def _raw_predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5, device=None):
         """
         Perform batched prediction on input data, supporting multi-label and multi-class classification.
 
@@ -225,26 +229,40 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
         """
         self.eval()  # Set model to evaluation mode
 
-        self.multilabel = False
         self.threshold = threshold
         self.return_probabilities = return_probabilities
 
-        if num_workers is None:
-            num_workers = max(1, cpu_count() - 1)
+        # Ensure `device` is a torch.device object
+        if isinstance(device, str):
+            device = torch.device(device)
+        elif device is None:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Create batches
-        batches = [
-            (input_ids[i:i + batch_size], attention_mask[i:i + batch_size])
-            for i in range(0, len(input_ids), batch_size)
-        ]
+        self.to(device)  # Move the model to the device
 
-        # Parallel processing with joblib
-        results = Parallel(n_jobs=num_workers)(
-            delayed(self.process_batch)(batch_input_ids, batch_attention_mask)
-            for batch_input_ids, batch_attention_mask in batches
-        )
+        # Set the number of workers
+        if device.type != "cpu":
+            num_workers = 0
+        else:
+            if num_workers is None:
+                num_workers = max(1, cpu_count() - 1)
 
-        # Concatenate results from all batches
+        # Move inputs to the correct device
+        input_ids = input_ids.to(device)
+        attention_mask = attention_mask.to(device)
+
+        # Create a DataLoader for efficient batching
+        dataset = TensorDataset(input_ids, attention_mask)
+        dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
+
+        # Process batches in DataLoader
+        results = []
+        for batch_input_ids, batch_attention_mask in dataloader:
+            batch_input_ids = batch_input_ids.to(device)  # Ensure the batch is on the correct device
+            batch_attention_mask = batch_attention_mask.to(device)  # Ensure the batch is on the correct device
+            results.append(self.process_batch(batch_input_ids, batch_attention_mask))
+
+        # Concatenate all results
         return torch.cat(results, dim=0).tolist()
 
 
@@ -443,7 +461,7 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
         return transformers.modeling_outputs.SequenceClassifierOutput(logits=logits)
 
 
-    def predict(self, raw_texts: List[str], hftokenizer: Optional[HFTokenizer] = None, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5):
+    def predict(self, raw_texts: List[str], hftokenizer: Optional[HFTokenizer] = None, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5, device=None):
         """
         Perform predictions on raw text inputs using the model.
 
@@ -497,14 +515,17 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
         input_ids, attention_mask = self.hftokenizer.encode(raw_texts)
 
         # Get model raw predictions
-        ret = self._raw_predict(input_ids, attention_mask, return_probabilities, batch_size, num_workers, threshold)
+        ret = self._raw_predict(input_ids, attention_mask, return_probabilities, batch_size, num_workers, threshold, device)
 
         return ret
-
 
     def process_batch(self, batch_input_ids, batch_attention_mask):
         """Process a single batch and return predictions or probabilities."""
         with torch.no_grad():  # Disable gradient computation
+            # Ensure inputs are on the same device as the model
+            batch_input_ids = batch_input_ids.to(next(self.parameters()).device)
+            batch_attention_mask = batch_attention_mask.to(next(self.parameters()).device)
+
             outputs = self.forward(input_ids=batch_input_ids, attention_mask=batch_attention_mask)
             logits = outputs.logits
 
@@ -525,8 +546,7 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
                     # Convert logits to class labels using argmax
                     return torch.argmax(logits, dim=-1).cpu()
 
-
-    def _raw_predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5):
+    def _raw_predict(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_probabilities: bool = False, batch_size: int = 32, num_workers: int = None, threshold: float = 0.5, device=None):
         """
         Perform batched prediction on input data, supporting multi-label and multi-class classification.
 
@@ -543,26 +563,40 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
         """
         self.eval()  # Set model to evaluation mode
 
-        self.multilabel = False
         self.threshold = threshold
         self.return_probabilities = return_probabilities
 
-        if num_workers is None:
-            num_workers = max(1, cpu_count() - 1)
+        # Ensure `device` is a torch.device object
+        if isinstance(device, str):
+            device = torch.device(device)
+        elif device is None:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Create batches
-        batches = [
-            (input_ids[i:i + batch_size], attention_mask[i:i + batch_size])
-            for i in range(0, len(input_ids), batch_size)
-        ]
+        self.to(device)  # Move the model to the device
 
-        # Parallel processing with joblib
-        results = Parallel(n_jobs=num_workers)(
-            delayed(self.process_batch)(batch_input_ids, batch_attention_mask)
-            for batch_input_ids, batch_attention_mask in batches
-        )
+        # Set the number of workers
+        if device.type != "cpu":
+            num_workers = 0
+        else:
+            if num_workers is None:
+                num_workers = max(1, cpu_count() - 1)
 
-        # Concatenate results from all batches
+        # Move inputs to the correct device
+        input_ids = input_ids.to(device)
+        attention_mask = attention_mask.to(device)
+
+        # Create a DataLoader for efficient batching
+        dataset = TensorDataset(input_ids, attention_mask)
+        dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
+
+        # Process batches in DataLoader
+        results = []
+        for batch_input_ids, batch_attention_mask in dataloader:
+            batch_input_ids = batch_input_ids.to(device)  # Ensure the batch is on the correct device
+            batch_attention_mask = batch_attention_mask.to(device)  # Ensure the batch is on the correct device
+            results.append(self.process_batch(batch_input_ids, batch_attention_mask))
+
+        # Concatenate all results
         return torch.cat(results, dim=0).tolist()
 
 
