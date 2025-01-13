@@ -122,7 +122,7 @@ By citing Beevibe, you help others discover and build upon this work!
 
 ## 🌟 **Acknowledgments**
 - Created with the assistance of AI tools like ChatGPT.
-- Inspired by the brilliance of **CamemBERT** and the power of Python.
+- Inspired by the brilliance of **BERT** and the power of Python.
 - Special thanks to the vibrant community of developers and data scientists who make innovation possible.
 
 ---

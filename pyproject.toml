@@ -41,5 +41,5 @@ build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 line-length = 88
-select = ["E", "F", "W"]
-ignore = ["E501"]
+lint.select = ["E", "F", "W"]
+lint.ignore = ["E501"]
