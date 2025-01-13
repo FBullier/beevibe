@@ -983,9 +983,15 @@ class MultiClassTrainer:
         # Merge and save model with Lora
         if self.use_lora:
             merged_model = self.model.merge_and_unload()
-
-        # Save the model in safetensors
-        merged_model.save_model_safetensors(path)
+            if isinstance(merged_model, BeeBaseModel):
+              merged_model.save_model_safetensors(path)
+            else:
+              merged_model.save_pretrained(path)
+        else:
+            if isinstance(self.model, BeeBaseModel):
+              self.model.save_model_safetensors(path)
+            else:
+              self.model.save_pretrained(path)
 
 
     def save_adaptater(self, path: str) -> None:
