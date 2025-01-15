@@ -1,6 +1,6 @@
 [project]
 name = "beevibe"
-version = "0.1.0.dev10"
+version = "0.1.0.dev11"
 description = "A lightweight framework for training and deploying language models for thematic text classification."
 authors = [
     { name = "François Bullier" }
@@ -15,7 +15,7 @@ dependencies = [
     "scipy>=1.13.1",
     "scikit-learn>=1.6.0",
     "torch>=2.5.1",
-    "bitsandbytes>=0.39.0",
+    "bitsandbytes>=0.41.0",
     "transformers[sentencepiece]>=4.47.0,<5.0.0",
     "tokenizers>=0.21.0",
     "peft",
