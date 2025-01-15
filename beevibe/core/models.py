@@ -73,6 +73,11 @@ class BeeSimpleMaskModelForClassification(BeeBaseModel):
             num_labels (int): The number of labels for classification.
         """
         super(BeeSimpleMaskModelForClassification, self).__init__()
+
+        # temporary fix to disable tokenizer parallelism warning
+        # (see https://stackoverflow.com/questions/62691279/how-to-disable-tokenizers-parallelism-true-false-warning)
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
         self.model_name = model_name
         self.num_labels = num_labels
         self.classes_names = []
@@ -369,6 +374,11 @@ class BeeCustomMaskModelForClassification(BeeBaseModel):
 
         self.hftokenizer = None
         self.model_directory = ""
+
+        # temporary fix to disable tokenizer parallelism warning
+        # (see https://stackoverflow.com/questions/62691279/how-to-disable-tokenizers-parallelism-true-false-warning)
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 
     def from_pretrained(self, quantization_config: Optional[BitsAndBytesConfig] = None ):
 

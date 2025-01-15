@@ -1013,6 +1013,19 @@ class MultiClassTrainer:
             self.logger_info("The adapter does not appear to be utilized during model training.")
 
 
+    def get_holdout_train_validation(
+            self,
+            texts: List[str],
+            labels: List[Any],
+            val_size: float = 0.2,
+            seed: int = 1811,):
+
+        train_texts, val_texts, train_labels, val_labels = train_test_split(
+            texts, labels, test_size=val_size, shuffle=True, random_state=seed
+        )
+
+        return train_texts, val_texts, train_labels, val_labels
+
     def holdout(
         self,
         texts: List[str],
@@ -1057,9 +1070,7 @@ class MultiClassTrainer:
 
         self.__init_tokenizer()
 
-        train_texts, val_texts, train_labels, val_labels = train_test_split(
-            texts, labels, test_size=val_size, shuffle=True, random_state=seed
-        )
+        train_texts, val_texts, train_labels, val_labels = self.get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
 
         if balanced:
             class_weights = self.compute_class_weights(train_labels, self.num_classes)
@@ -1245,7 +1256,22 @@ class MultiClassTrainer:
         self.logger_info("\n")
         self.__print_metrics({"val_metrics": ret})
 
-        return rets
+        # Aggregated CV folds and global results
+        all_results = {"min_best_epoch":np.min(fold_best_epoch),
+                       "max_best_epoch":np.max(fold_best_epoch),
+                       "mean_accuracy":np.mean(fold_accuracies),
+                       "std_accuracy":np.std(fold_accuracies),
+                       "mean_f1_micro":np.mean(fold_f1_micro),
+                       "std_f1_micro":np.std(fold_f1_micro),
+                       "std_mcc":np.mean(fold_mcc),
+                       "mean_mcc":np.std(fold_mcc),
+                       "all_labels":all_labels.tolist(),
+                       "all_preds":all_preds.tolist()
+                       }
+
+        all_rets = {"cv_folds":rets, "global_results":all_results}
+
+        return all_rets
 
     def release_model(self) -> None:
         """
