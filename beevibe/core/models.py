@@ -375,6 +375,7 @@ class BeeMLMClassifier(BeeBaseModel):
             json.dump(config, f)
 
 
+
     @classmethod
     def load_model_safetensors(cls, save_directory: str):
         """

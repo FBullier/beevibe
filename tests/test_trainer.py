@@ -4,6 +4,7 @@ from torch import nn
 from unittest.mock import MagicMock, patch
 from beevibe import BeeMLMClassifier
 
+
 @pytest.fixture
 def model():
     model_name = "bert-base-uncased"
