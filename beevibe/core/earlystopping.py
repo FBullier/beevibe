@@ -1,4 +1,4 @@
-class EarlyStopping:
+class BeeEarlyStopping:
     """
     Implements early stopping mechanism to halt training when validation performance stops improving.
 

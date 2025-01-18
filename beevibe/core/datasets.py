@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 
-class TextDatasetMC(Dataset):
+class BeeTextDataset(Dataset):
     """
     A Dataset class for multi-class text classification.
 
@@ -9,10 +9,9 @@ class TextDatasetMC(Dataset):
         texts (list of str): The list of text samples.
         labels (list of int): The list of corresponding labels.
         hftokenizer (bee.models.HFTokenizer): Tokenizer to preprocess the text samples.
-        #max_len (int): Maximum sequence length for tokenization.
     """
 
-    def __init__(self, texts: list[str], labels: list[int], hftokenizer):
+    def __init__(self, texts: list[str], labels: list[int], hftokenizer, multilabel):
         """
         Initializes the TextDatasetMC class with the given texts, labels, hftokenizer, and maximum sequence length.
 
@@ -20,11 +19,12 @@ class TextDatasetMC(Dataset):
             texts (list of str): Text samples.
             labels (list of int): Corresponding labels.
             hftokenizer (beevive.models.HFTokenizer): Tokenizer for text preprocessing.
-            max_len (int, optional): Maximum sequence length for tokenization. Default is 128.
+            multilabel (Bool): Multi-label classification ? True/False
         """
         self.texts = texts
         self.labels = labels
         self.hftokenizer = hftokenizer
+        self.multilabel = multilabel
 
     def __len__(self) -> int:
         """
@@ -52,68 +52,15 @@ class TextDatasetMC(Dataset):
         input_ids = encoded_batch["input_ids"]
         attention_mask = encoded_batch["attention_mask"]
 
-        return {
+        ret = {
             "text": text,
             "input_ids": input_ids.flatten(),
             "attention_mask": attention_mask.flatten(),
-            "label": torch.tensor(label, dtype=torch.long),
         }
 
+        if self.multilabel:
+            ret["label"] = torch.tensor(label, dtype=torch.float)
+        else:
+            ret["label"] = torch.tensor(label, dtype=torch.long)
 
-class TextDatasetML(Dataset):
-    """
-    A Dataset class for multi-label text classification.
-
-    Attributes:
-        texts (list of str): The list of text samples.
-        labels (list of list of int): The list of corresponding multi-labels.
-        tokenizer (transformers.PreTrainedTokenizer): Tokenizer to preprocess the text samples.
-        max_len (int): Maximum sequence length for tokenization.
-    """
-
-    def __init__(self, texts: list[str], labels: list[list[int]], hftokenizer):
-        """
-        Initializes the TextDatasetML class with the given texts, labels, tokenizer, and maximum sequence length.
-
-        Args:
-            texts (list of str): Text samples.
-            labels (list of list of int): Corresponding multi-labels.
-            tokenizer (transformers.PreTrainedTokenizer): Tokenizer for text preprocessing.
-            max_len (int, optional): Maximum sequence length for tokenization. Default is 128.
-        """
-        self.texts = texts
-        self.labels = labels
-        self.tokenizer = hftokenizer
-
-    def __len__(self) -> int:
-        """
-        Returns the number of samples in the dataset.
-
-        Returns:
-            int: The number of samples.
-        """
-        return len(self.texts)
-
-    def __getitem__(self, idx: int) -> dict:
-        """
-        Retrieves a single sample from the dataset.
-
-        Args:
-            idx (int): Index of the sample to retrieve.
-
-        Returns:
-            dict: A dictionary containing the tokenized input, attention mask, and multi-label.
-        """
-        text = self.texts[idx]
-        label = self.labels[idx]
-
-        encoded_batch = self.hftokenizer.encode_plus(text)
-        input_ids = encoded_batch["input_ids"]
-        attention_mask = encoded_batch["attention_mask"]
-
-        return {
-            "text": text,
-            "input_ids": input_ids.flatten(),
-            "attention_mask": attention_mask.flatten(),
-            "label": torch.tensor(label, dtype=torch.float),
-        }
+        return ret

@@ -21,10 +21,10 @@ from sklearn.utils.class_weight import compute_class_weight
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from beevibe.core.datasets import TextDatasetML, TextDatasetMC
+from beevibe.core.datasets import BeeTextDataset
 from beevibe.core.models import HFMLMClassifier, BeeBaseModel
 from beevibe.core.tokenizers import HFTokenizer
-from beevibe.core.earlystopping import EarlyStopping
+from beevibe.core.earlystopping import BeeEarlyStopping
 from beevibe.utils.logger import setup_logger
 from beevibe.utils.validator import DatasetConfig
 
@@ -457,7 +457,7 @@ class BeeTrainer:
         self.__init_model()
 
         if val_loader is not None:
-            early_stopping = EarlyStopping(patience=patience, min_delta=min_delta)
+            early_stopping = BeeEarlyStopping(patience=patience, min_delta=min_delta)
 
         val_losses = []
         train_losses = []
@@ -957,14 +957,9 @@ class BeeTrainer:
         else:
             class_weights = None
 
-        if self.multilabel:
-            train_dataset = TextDatasetML(
-                train_texts, train_labels, self.hftokenizer
-            )
-        else:
-            train_dataset = TextDatasetMC(
-                train_texts, train_labels, self.hftokenizer
-            )
+        train_dataset = BeeTextDataset(
+            train_texts, train_labels, self.hftokenizer, self.multilabel,
+        )
 
         train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
 
@@ -1095,20 +1090,13 @@ class BeeTrainer:
         else:
             class_weights = None
 
-        if self.multilabel:
-            train_dataset = TextDatasetML(
-                train_texts, train_labels, self.hftokenizer
-            )
-            val_dataset = TextDatasetML(
-                val_texts, val_labels, self.hftokenizer
-            )
-        else:
-            train_dataset = TextDatasetMC(
-                train_texts, train_labels, self.hftokenizer
-            )
-            val_dataset = TextDatasetMC(
-                val_texts, val_labels, self.hftokenizer
-            )
+        train_dataset = BeeTextDataset(
+            train_texts, train_labels, self.hftokenizer, self.multilabel,
+        )
+
+        val_dataset = BeeTextDataset(
+            val_texts, val_labels, self.hftokenizer, self.multilabel,
+        )
 
         train_loader = DataLoader(train_dataset, batch_size=batch_size, drop_last=True)
         val_loader = DataLoader(val_dataset, batch_size=batch_size)
@@ -1208,20 +1196,13 @@ class BeeTrainer:
             else:
                 class_weights = None
 
-            if self.multilabel:
-                train_dataset = TextDatasetML(
-                    train_texts, train_labels, self.hftokenizer
-                )
-                val_dataset = TextDatasetML(
-                    val_texts, val_labels, self.hftokenizer
-                )
-            else:
-                train_dataset = TextDatasetMC(
-                    train_texts, train_labels, self.hftokenizer
-                )
-                val_dataset = TextDatasetMC(
-                    val_texts, val_labels, self.hftokenizer
-                )
+            train_dataset = BeeTextDataset(
+                train_texts, train_labels, self.hftokenizer, self.multilabel,
+            )
+
+            val_dataset = BeeTextDataset(
+                val_texts, val_labels, self.hftokenizer, self.multilabel,
+            )
 
             train_loader = DataLoader(
                 train_dataset, batch_size=batch_size, drop_last=True
