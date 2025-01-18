@@ -40,7 +40,7 @@ It integrates:
 Install Beevibe using pip:
 
 ```bash
-pip install Beevibe
+pip install beevibe
 ```
 
 ---
@@ -52,7 +52,6 @@ Train CamemBERT on your custom thematic dataset:
 
 ```python
 from Beevibe import BeeMLMClassifier, BeeTrainer
-from torch.optim import AdamW
 import torch.nn as nn
 
 # Define classification head
@@ -72,7 +71,6 @@ bee_mlm_model = BeeMLMClassifier(
 # Initialize the trainer
 trainer = BeeTrainer(
   model=bee_mlm_model,
-  optimizer_class=AdamW,
   use_lora=True,
   lora_r = 64,
   lora_alpha= 128,
