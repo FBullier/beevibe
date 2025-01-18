@@ -1,188 +1,139 @@
 import pytest
 import torch
-from beevibe import HFTokenizer, HFModelForClassification, BeeSimpleMaskModelForClassification, BeeCustomMaskModelForClassification
+from torch import nn
+from unittest.mock import MagicMock, patch
+from beevibe import BeeMLMClassifier
 
 @pytest.fixture
-def tokenizer():
-    return HFTokenizer().from_pretrained("bert-base-uncased")
-
-@pytest.fixture
-def simple_model():
-    return BeeSimpleMaskModelForClassification("bert-base-uncased", num_labels=2)
-
-@pytest.fixture
-def custom_model():
+def model():
+    model_name = "bert-base-uncased"
+    num_labels = 3
     layer_configs = [
-        {"input_size": 768, "output_size": 128, "activation": torch.nn.ReLU, "dropout_rate": 0.1},
-        {"input_size": 128, "output_size": 2},
+        {"input_size": 768, "output_size": 512, "activation": nn.ReLU, "dropout_rate": 0.1},
+        {"input_size": 512, "output_size": num_labels, "activation": None, "dropout_rate": None},
     ]
-    return BeeCustomMaskModelForClassification("bert-base-uncased", num_labels=2, layer_configs=layer_configs)
+    return BeeMLMClassifier(model_name=model_name, num_labels=num_labels, layer_configs=layer_configs)
 
-def test_hf_tokenizer(tokenizer):
-    text = "Hello, how are you?"
-    tokens = tokenizer(text, return_tensors="pt")
-    assert "input_ids" in tokens
-    assert "attention_mask" in tokens
+def test_init(model):
+    assert model.model_name == "bert-base-uncased"
+    assert model.num_labels == 3
+    assert model.layer_configs is not None
+    assert model.classes_names == []
 
-def test_hf_model_for_classification():
-    model = HFModelForClassification().from_pretrained("bert-base-uncased")
-    assert isinstance(model, torch.nn.Module)
+def test_from_pretrained(model):
+    with patch("transformers.AutoModel.from_pretrained", return_value=MagicMock()) as mock_from_pretrained:
+        model.from_pretrained()
+        mock_from_pretrained.assert_called_once_with(model.model_name, quantization_config=None)
+        assert hasattr(model, "base_model")
+        assert isinstance(model.classifier, nn.Sequential)
 
-def test_simple_model_forward(simple_model, tokenizer):
-    text = ["This is a test sentence.", "Another example sentence."]
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    labels = torch.tensor([0, 1])
+def test_build_custom_stack(model):
+    stack = model._build_custom_stack(model.layer_configs)
+    assert isinstance(stack, nn.Sequential)
+    assert len(stack) > 0
 
-    outputs = simple_model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-    assert outputs.logits.shape == (2, 2)  # Batch size x num_labels
+def test_forward_attention_mask_validation(model):
+    input_ids = torch.randint(0, 100, (4, 16))
+    with pytest.raises(ValueError, match="attention_mask is required for the forward pass."):
+        model.forward(input_ids=input_ids)
 
-def test_custom_model_forward(custom_model, tokenizer):
-    text = ["This is a test sentence.", "Another example sentence."]
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    labels = torch.tensor([0, 1])
+def test_predict(model):
+    model.hftokenizer = MagicMock()
+    model.hftokenizer.encode = MagicMock(return_value=(torch.randint(0, 100, (4, 16)), torch.ones((4, 16))))
+    model._raw_predict = MagicMock(return_value=[[0.8, 0.2], [0.4, 0.6]])
+    
+    raw_texts = ["Sample text 1", "Sample text 2"]
+    predictions = model.predict(raw_texts)
+    assert len(predictions) == len(raw_texts)
 
-    outputs = custom_model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-    assert outputs.logits.shape == (2, 2)  # Batch size x num_labels
-
-def test_custom_model_layer_config():
-    layer_configs = [
-        {"input_size": 768, "output_size": 256, "activation": torch.nn.ReLU, "dropout_rate": 0.1},
-        {"input_size": 256, "output_size": 128, "activation": torch.nn.ReLU, "dropout_rate": 0.1},
-        {"input_size": 128, "output_size": 2},
-    ]
-    model = BeeCustomMaskModelForClassification("bert-base-uncased", num_labels=2, layer_configs=layer_configs)
-
-    # Count expected layers (linear + optional components like activation/dropout)
-    expected_layers = sum(1 + bool(config.get("activation")) + bool(config.get("dropout_rate")) for config in layer_configs)
-
-    assert len(model.classifier) == expected_layers
-
-def test_tokenizer_special_tokens(tokenizer):
-    text = "Hello, how are you?"
-    tokens = tokenizer(text, return_tensors="pt", add_special_tokens=True)
-    assert tokens["input_ids"].shape[1] >= len(text.split())  # Ensures special tokens are added
-
-def test_simple_model_output_consistency(simple_model, tokenizer):
-    text = ["Test sentence one.", "Test sentence two."]
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-
-    # Set model to evaluation mode to disable dropout
-    simple_model.eval()
-    outputs1 = simple_model(input_ids=input_ids, attention_mask=attention_mask)
-    outputs2 = simple_model(input_ids=input_ids, attention_mask=attention_mask)
-
-    # Ensure deterministic outputs for the same inputs
-    assert torch.allclose(outputs1.logits, outputs2.logits, atol=1e-5)
-
-def test_custom_model_output_shape(custom_model, tokenizer):
-    text = ["This is a test.", "Another example."]
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-
-    outputs = custom_model(input_ids=input_ids, attention_mask=attention_mask)
-    assert outputs.logits.shape == (2, 2)  # Batch size x num_labels
-    assert outputs.logits.dtype == torch.float32  # Ensure logits are of type float32
-
-def test_custom_model_with_incorrect_input(custom_model):
-    with pytest.raises(ValueError, match="attention_mask is required for the forward pass"):
-        input_ids = torch.tensor([[101, 2000, 102]])  # Missing attention mask
-        custom_model(input_ids=input_ids)
-
-def test_simple_model_gradients(simple_model, tokenizer):
-    text = ["Gradient test sentence."]
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    labels = torch.tensor([0])
-
-    outputs = simple_model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-    loss = torch.nn.functional.cross_entropy(outputs.logits, labels)
-    loss.backward()
-
-    # Ensure gradients are computed for model parameters
-    has_grads = any(param.grad is not None for param in simple_model.parameters())
-    assert has_grads
-
-def test_tokenizer_handles_empty_string(tokenizer):
-    text = ""
-    tokens = tokenizer(text, return_tensors="pt")
-    assert "input_ids" in tokens
-    assert tokens["input_ids"].shape[1] == 2  # Should include special tokens
-
-def test_simple_model_invalid_input(simple_model):
-    input_ids = torch.tensor([[101, 102]])  # Shape: [1, 2]
-    attention_mask = torch.tensor([[1]])  # Shape: [1, 1] (mismatched)
-
-    print(f"input_ids shape: {input_ids.shape}")
-    print(f"attention_mask shape: {attention_mask.shape}")
-
-    # Match the general error message pattern
+def test_forward_shape_mismatch(model):
+    input_ids = torch.randint(0, 100, (4, 16))
+    attention_mask = torch.ones((4, 15))  # Mismatched shape
     with pytest.raises(ValueError, match="input_ids shape .* and attention_mask shape .* must match."):
-        simple_model(input_ids=input_ids, attention_mask=attention_mask)
+        model.forward(input_ids=input_ids, attention_mask=attention_mask)
 
-def test_custom_model_gradient_flow(custom_model, tokenizer):
-    text = ["Gradient check sentence."]
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    labels = torch.tensor([0])
+def test_forward_pass(model):
+    model.base_model = MagicMock()
+    model.base_model.return_value = (torch.rand((4, 16, 768)),)  # CLS token representations
+    
+    input_ids = torch.randint(0, 100, (4, 16))
+    attention_mask = torch.ones((4, 16))
+    model.classifier = nn.Sequential(nn.Linear(768, model.num_labels))
+    
+    output = model.forward(input_ids=input_ids, attention_mask=attention_mask)
+    assert hasattr(output, "logits")
+    assert output.logits.shape == (4, model.num_labels)
+    
+    input_ids = torch.randint(0, 100, (4, 16))
+    attention_mask = torch.ones((4, 16))
+    model.classifier = nn.Sequential(nn.Linear(768, model.num_labels))
+    
+    output = model.forward(input_ids=input_ids, attention_mask=attention_mask)
+    assert hasattr(output, "logits")
+    assert output.logits.shape == (4, model.num_labels)
 
-    outputs = custom_model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-    loss = torch.nn.functional.cross_entropy(outputs.logits, labels)
-    loss.backward()
+def test_predict_multilabel(model):
+    model.hftokenizer = MagicMock()
+    model.hftokenizer.encode = MagicMock(return_value=(torch.randint(0, 100, (4, 16)), torch.ones((4, 16))))
+    model._raw_predict = MagicMock(return_value=torch.tensor([[0.8, 0.2], [0.4, 0.6]]))
+    
+    model.multilabel = True
+    raw_texts = ["Sample text 1", "Sample text 2"]
+    predictions = model.predict(raw_texts, return_probabilities=False, threshold=0.5)
+    
+    assert len(predictions) == len(raw_texts)
+    assert all(isinstance(pred, torch.Tensor) for pred in predictions)
 
-    has_gradients = any(param.grad is not None for param in custom_model.parameters())
-    assert has_gradients
+def test_save_and_load_model(tmp_path, model):
+    # Mock base model and classifier
+    model.base_model = MagicMock()
+    model.classifier = MagicMock()
 
-def test_simple_model_no_labels(simple_model, tokenizer):
-    text = ["Inference test sentence."]
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
+    # Mock valid layer_configs with serializable activations
+    model.layer_configs = [
+        {"input_size": 768, "output_size": 512, "activation": nn.ReLU},
+        {"input_size": 512, "output_size": 3, "activation": None},
+    ]
 
-    outputs = simple_model(input_ids=input_ids, attention_mask=attention_mask)
-    assert outputs.logits.shape == (1, 2)  # Batch size x num_labels
+    save_directory = tmp_path / "model_dir"
+    model.save_model_safetensors(save_directory)
 
-def test_custom_model_different_batch_sizes(custom_model, tokenizer):
-    text = ["Sentence 1", "Sentence 2", "Sentence 3"]
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
+    assert (save_directory / "model.safetensors").exists()
+    assert (save_directory / "config.json").exists()
 
-    outputs = custom_model(input_ids=input_ids, attention_mask=attention_mask)
-    assert outputs.logits.shape == (3, 2)  # Batch size x num_labels
+    # Load model
+    loaded_model = BeeMLMClassifier.load_model_safetensors(save_directory)
+    assert loaded_model.model_name == model.model_name
+    assert loaded_model.num_labels == model.num_labels
+    assert loaded_model.layer_configs[0]["activation"] == nn.ReLU
 
-def test_hf_model_for_classification_with_additional_kwargs():
-    model = HFModelForClassification().from_pretrained("bert-base-uncased", num_labels=3)
-    assert model.config.num_labels == 3
+def test_raw_predict(model):
+    model.eval = MagicMock()
+    model.to = MagicMock()
+    model.device = "cpu"
+    model.process_batch = MagicMock(
+        side_effect=[
+            torch.tensor([[0.8, 0.2], [0.4, 0.6]]),
+            torch.tensor([[0.7, 0.3], [0.5, 0.5]])
+        ]
+    )
+    
+    input_ids = torch.randint(0, 100, (4, 16))
+    attention_mask = torch.ones((4, 16))
+    
+    predictions = model._raw_predict(input_ids, attention_mask, batch_size=2)
+    assert len(predictions) == 4  # Total predictions match input size
 
-def test_simple_model_with_large_input(simple_model, tokenizer):
-    text = ["This is a test sentence." * 50]  # Large input
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
+def test_process_batch(model):
+    # Mock parameters with a valid iterator
+    model.parameters = MagicMock(return_value=iter([torch.nn.Parameter(torch.empty(1))]))
 
-    outputs = simple_model(input_ids=input_ids, attention_mask=attention_mask)
-    assert outputs.logits.shape == (1, 2)  # Batch size x num_labels
+    # Mock forward method to return valid logits
+    model.forward = MagicMock(return_value=MagicMock(logits=torch.rand(4, model.num_labels)))
 
-def test_custom_model_handles_missing_input(custom_model):
-    input_ids = torch.tensor([[101, 2000, 102]])
-    with pytest.raises(ValueError):
-        custom_model(input_ids=input_ids)
+    batch_input_ids = torch.randint(0, 100, (4, 16))
+    batch_attention_mask = torch.ones((4, 16))
 
-def test_simple_model_with_multiple_labels(simple_model, tokenizer):
-    text = ["Label test sentence."]
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-    input_ids = inputs["input_ids"]
-    attention_mask = inputs["attention_mask"]
-    labels = torch.tensor([1])
-
-    outputs = simple_model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-    assert outputs.logits.shape == (1, 2)  # Batch size x num_labels
+    # Process batch
+    predictions = model.process_batch(batch_input_ids, batch_attention_mask)
+    assert predictions.shape == (4, model.num_labels)

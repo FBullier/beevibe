@@ -105,13 +105,14 @@ class BeeMLMClassifier(BeeBaseModel):
             nn.Sequential: A stack of custom layers.
         """
         layers = []
-        
+
+        if not layer_configs:
+            layer_configs = [{"input_size": 768, "output_size": self.num_labels, "activation": None}]
+
         # Get previous layer size, this should be 768 for common MLM
         previous_size = layer_configs[0]["input_size"]  
 
         # Create a simple classifier if there is no layer_configs
-        if layer_configs is None:
-            layer_configs = [{"input_size": previous_size, "output_size": num_classes, "activation": None}]
 
         for config in layer_configs:
             output_size = config["output_size"]
@@ -120,6 +121,9 @@ class BeeMLMClassifier(BeeBaseModel):
             batch_norm = config.get("batch_norm", False)
             layer_norm = config.get("layer_norm", False)
             residual = config.get("residual", False)
+
+            if output_size <= 0:
+                raise ValueError(f"Invalid output_size {output_size} in layer configuration.")
 
             # Add linear layer
             linear_layer = nn.Linear(previous_size, output_size)
@@ -355,6 +359,17 @@ class BeeMLMClassifier(BeeBaseModel):
             "layer_configs": self.layer_configs,
         }
 
+        #config = {
+        #    "model_name": self.model_name,
+        #    "num_labels": self.num_labels,
+        #    "classes_names": self.classes_names,
+        #    "multilabel": self.multilabel,
+        #    "layer_configs": [
+        #        {**layer, "activation": layer["activation"].__name__ if layer["activation"] else None}
+        #        for layer in self.layer_configs
+        #    ],
+        #}
+
         # torch.save(config, os.path.join(save_directory, "config.pth"))
         with open(os.path.join(save_directory, "config.json"), "w") as f:
             json.dump(config, f)
@@ -380,7 +395,12 @@ class BeeMLMClassifier(BeeBaseModel):
         num_labels = config["num_labels"]
         multilabel = config["multilabel"]
         classes_names = config["classes_names"]
-        layer_configs = config["layer_configs"]
+
+        #layer_configs = config["layer_configs"]
+        layer_configs = [
+           {**layer, "activation": getattr(nn, layer["activation"]) if layer["activation"] else None}
+           for layer in config["layer_configs"]
+           ]
 
         # Manage JSON serialization
         if isinstance(classes_names, list):
