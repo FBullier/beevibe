@@ -51,25 +51,40 @@ pip install Beevibe
 Train CamemBERT on your custom thematic dataset:
 
 ```python
-from Beevibe import BeeCustomMaskModelForClassification, BeeTrainer
+from Beevibe import BeeMLMClassifier, BeeTrainer
+from torch.optim import AdamW
+import torch.nn as nn
 
 # Define classification head
 head_layer_configs = [
-        {"input_size": 768, "output_size": num_classes, "activation": None},
+        {"input_size": 768, "output_size": 512, "activation": nn.ReLU, "batch_norm": True},
+        {"input_size": 512, "output_size": 256, "activation": nn.ReLU, "layer_norm": True},
+        {"input_size": 256, "output_size": num_classes, "activation": None},
     ]
 
-# Initialize model
-bv_model = BeeCustomMaskModelForClassification(
+# Initialize model for multi-classes
+bee_mlm_model = BeeMLMClassifier(
     model_name = "camembert-base",
     num_labels = 5,
     layer_configs=head_layer_configs
 )
 
 # Initialize the trainer
-trainer = BeeTrainer(model=bv_model)
+trainer = BeeTrainer(
+  model=bee_mlm_model,
+  optimizer_class=AdamW,
+  use_lora=True,
+  lora_r = 64,
+  lora_alpha= 128,
+  lora_dropout = 0.01
+  )
 
-# Train the model
-ret = trainer.train(texts=texts, labels=labels, num_epochs=1)
+# Train the model with QLora
+ret = trainer.train(
+  texts=texts, 
+  labels=labels, 
+  num_epochs=10
+  )
 
 # Save the trained model
 trainer.save_model("./sav_model")
@@ -83,13 +98,13 @@ trainer.release_model()
 Use the trained model to classify or extract themes from new sentences:
 
 ```python
-from Beevibe import BeeCustomMaskModelForClassification
+from Beevibe import BeeMLMClassifier
 
 # Load the trained model
-bv_model = BeeCustomMaskModelForClassification.load_model_safetensors("./sav_model")
+bee_mlm_model = BeeMLMClassifier.load_model_safetensors("./sav_model")
 
 # Infer themes for a new sentence
-result = bv_model.predict(["This is a new sentence to classify."])
+result = bee_mlm_model.predict(["This is a new sentence to classify."])
 
 print("Predicted Theme:", result)
 ```

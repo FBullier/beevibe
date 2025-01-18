@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from beevibe.core.datasets import TextDatasetML, TextDatasetMC
-from beevibe.core.models import HFModelForClassification, BeeBaseModel
+from beevibe.core.models import HFMLMClassifier, BeeBaseModel
 from beevibe.core.tokenizers import HFTokenizer
 from beevibe.core.earlystopping import EarlyStopping
 from beevibe.utils.logger import setup_logger
@@ -37,7 +37,7 @@ from peft import PeftModel
 from transformers import BitsAndBytesConfig
 
 
-class MultiClassTrainer:
+class BeeTrainer:
     """
     A class for training multi-class or multi-label classification models with customizable
     model, optimizer, and scheduler creators. Provides functionality to manage training
@@ -308,7 +308,7 @@ class MultiClassTrainer:
             self.model.from_pretrained(quantization_config=self.quantization_config)
         else :
             self.model = None
-            self.model = HFModelForClassification.from_pretrained(model_name=self.model_name,
+            self.model = HFMLMClassifier.from_pretrained(model_name=self.model_name,
                                                                   num_labels=self.num_classes,
                                                                     quantization_config=self.quantization_config)
 
@@ -408,6 +408,22 @@ class MultiClassTrainer:
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
+
+    def __make_serializable(self, obj):
+        if isinstance(obj, torch.Tensor):
+            return obj.tolist()  # Convert PyTorch tensor to list
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()  # Convert NumPy array to list
+        elif isinstance(obj, (np.int64, np.int32, int)):  # Handle NumPy integers
+            return int(obj)
+        elif isinstance(obj, (np.float64, np.float32, float)):  # Handle NumPy floats
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {key: self.__make_serializable(value) for key, value in obj.items()}  # Process nested dictionaries
+        elif isinstance(obj, list):
+            return [self.__make_serializable(item) for item in obj]  # Process lists
+        else:
+            return obj  # Leave other types unchanged    
 
     def __train(
         self,
@@ -766,7 +782,7 @@ class MultiClassTrainer:
             }
         )
 
-        sns.set(style="whitegrid")
+        sns.set_theme(style="whitegrid")
         plt.figure(figsize=(10, 6))
 
         sns.lineplot(
@@ -962,6 +978,8 @@ class MultiClassTrainer:
             seed=seed,
         )
 
+        ret = self.__make_serializable(ret)
+
         return ret
 
     def save_model(self, path: str) -> None:
@@ -1107,6 +1125,8 @@ class MultiClassTrainer:
 
         self.logger_info("\n")
         self.__print_metrics(ret)
+
+        ret = self.__make_serializable(ret)
 
         return ret
 
@@ -1270,6 +1290,8 @@ class MultiClassTrainer:
                        }
 
         all_rets = {"cv_folds":rets, "global_results":all_results}
+
+        all_rets = self.__make_serializable(all_rets)
 
         return all_rets
 
