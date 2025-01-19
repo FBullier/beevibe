@@ -350,31 +350,21 @@ class BeeMLMClassifier(BeeBaseModel):
         else:
             classes_names = self.classes_names
 
-        # Save model configuration
+        # jsonify layer_config
         config = {
             "model_name": self.model_name,
             "num_labels": self.num_labels,
             "classes_names": classes_names,
             "multilabel":self.multilabel,
-            "layer_configs": self.layer_configs,
+            "head_layer_config": [
+                {k: (v.__name__ if k == "activation" and v else v) for k, v in layer.items() if not (k == "activation" and v is None)}
+                for layer in self.layer_configs
+            ],
         }
-
-        #config = {
-        #    "model_name": self.model_name,
-        #    "num_labels": self.num_labels,
-        #    "classes_names": self.classes_names,
-        #    "multilabel": self.multilabel,
-        #    "layer_configs": [
-        #        {**layer, "activation": layer["activation"].__name__ if layer["activation"] else None}
-        #        for layer in self.layer_configs
-        #    ],
-        #}
 
         # torch.save(config, os.path.join(save_directory, "config.pth"))
         with open(os.path.join(save_directory, "config.json"), "w") as f:
             json.dump(config, f)
-
-
 
     @classmethod
     def load_model_safetensors(cls, save_directory: str):
@@ -394,13 +384,13 @@ class BeeMLMClassifier(BeeBaseModel):
 
         model_name = config["model_name"]
         num_labels = config["num_labels"]
-        multilabel = config["multilabel"]
         classes_names = config["classes_names"]
+        multilabel = config["multilabel"]
 
         #layer_configs = config["layer_configs"]
         layer_configs = [
            {**layer, "activation": getattr(nn, layer["activation"]) if layer["activation"] else None}
-           for layer in config["layer_configs"]
+           for layer in config["head_layer_config"]
            ]
 
         # Manage JSON serialization
