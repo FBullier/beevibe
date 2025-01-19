@@ -79,6 +79,7 @@ class BeeMLMClassifier(BeeBaseModel):
         self.classes_names = []
         self.multilabel = None
         self.layer_configs = layer_configs
+        self.return_probabilities = False
 
         self.hftokenizer = None
         self.model_directory = ""
@@ -389,9 +390,12 @@ class BeeMLMClassifier(BeeBaseModel):
 
         #layer_configs = config["layer_configs"]
         layer_configs = [
-           {**layer, "activation": getattr(nn, layer["activation"]) if layer["activation"] else None}
-           for layer in config["head_layer_config"]
+           {k: (getattr(nn, v) if k == "activation" and v else v) for k, v in layer.items() if not (k == "activation" and v is None)}
+            for layer in config.get("head_layer_config")
+           #{**layer, "activation": getattr(nn, layer.get("activation")) if layer.get("activation") else None}
+           #for layer in config.get("head_layer_config")
            ]
+
 
         # Manage JSON serialization
         if isinstance(classes_names, list):

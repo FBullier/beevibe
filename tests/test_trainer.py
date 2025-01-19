@@ -86,9 +86,22 @@ def test_predict_multilabel(model):
     assert all(isinstance(pred, torch.Tensor) for pred in predictions)
 
 def test_save_and_load_model(tmp_path, model):
-    # Mock base model and classifier
-    model.base_model = MagicMock()
-    model.classifier = MagicMock()
+    # Mock base model
+    mock_base_model = MagicMock()
+    mock_base_model.state_dict.return_value = {"dummy_key": torch.rand(1)}
+    mock_base_model.load_state_dict = MagicMock()  # Skip strict loading
+
+    model.base_model = mock_base_model
+
+    # Mock classifier with state_dict matching the Sequential structure
+    mock_classifier = MagicMock()
+    mock_classifier.state_dict.return_value = {
+        "0.weight": torch.rand(512, 768),
+        "0.bias": torch.rand(512),
+        "2.weight": torch.rand(3, 512),
+        "2.bias": torch.rand(3),
+    }
+    model.classifier = mock_classifier
 
     # Mock valid layer_configs with serializable activations
     model.layer_configs = [
@@ -99,11 +112,16 @@ def test_save_and_load_model(tmp_path, model):
     save_directory = tmp_path / "model_dir"
     model.save_model_safetensors(save_directory)
 
+    # Assert saved files exist
     assert (save_directory / "model.safetensors").exists()
     assert (save_directory / "config.json").exists()
 
     # Load model
-    loaded_model = BeeMLMClassifier.load_model_safetensors(save_directory)
+    with patch("transformers.BertModel.load_state_dict", MagicMock()) as mocked_load:
+        loaded_model = BeeMLMClassifier.load_model_safetensors(save_directory)
+        mocked_load.assert_called_once()
+
+    # Validate loaded model attributes
     assert loaded_model.model_name == model.model_name
     assert loaded_model.num_labels == model.num_labels
     assert loaded_model.layer_configs[0]["activation"] == nn.ReLU
@@ -126,15 +144,21 @@ def test_raw_predict(model):
     assert len(predictions) == 4  # Total predictions match input size
 
 def test_process_batch(model):
-    # Mock parameters with a valid iterator
-    model.parameters = MagicMock(return_value=iter([torch.nn.Parameter(torch.empty(1))]))
+    # Mock parameters with a valid generator of Parameters
+    model.parameters = MagicMock(return_value=iter([torch.nn.Parameter(torch.empty(1)) for _ in range(2)]))
 
     # Mock forward method to return valid logits
     model.forward = MagicMock(return_value=MagicMock(logits=torch.rand(4, model.num_labels)))
+
+    # Set required attributes
+    model.return_probabilities = True  # Ensure probabilities are returned
+    model.threshold = 0.5  # Required for multi-label classification
 
     batch_input_ids = torch.randint(0, 100, (4, 16))
     batch_attention_mask = torch.ones((4, 16))
 
     # Process batch
     predictions = model.process_batch(batch_input_ids, batch_attention_mask)
-    assert predictions.shape == (4, model.num_labels)
+    assert predictions.shape == (4, model.num_labels)  # Check for the expected shape
+
+
