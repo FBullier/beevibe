@@ -198,9 +198,6 @@ class BeeTrainer:
         # Display the working Device
         self.logger_info(f"Device : {self.device}")
 
-        self.logger_info(f"num_classes : {self.num_classes}")
-        self.logger_info(f"classes_names : {self.classes_names}")
-
 
     def configure_quantization(self, quantization_type=None, compute_dtype=torch.float16, quant_type="nf4", enable_dynamic=False, use_double_quant=False):
         """
