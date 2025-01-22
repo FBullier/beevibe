@@ -13,11 +13,6 @@ from .core.models import HFMLMClassifier
 from .core.models import BeeMLMClassifier
 from .core.schedulers import BeeAnnealOnPlateau
 
-#from .ai.openai_interface import AIHelper
-#from .ai.openai_interface import OpenAIInterface
-#from .utils.logger import setup_logger
-#from .utils.config import config
-
 # Package metadata
 __version__ = "0.1.0"
 __author__ = "François Bullier"
