@@ -169,7 +169,6 @@ class BeeMLMClassifier(BeeBaseModel):
                 raise AttributeError("Base model configuration does not have a 'hidden_size' attribute.")    
 
 
-
     def _build_custom_stack(self, layer_configs: list[dict]) -> nn.Sequential:
         """
         Builds a custom stack of layers based on the given configurations.
