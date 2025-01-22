@@ -166,7 +166,7 @@ class BeeMLMClassifier(BeeBaseModel):
                         f"Input size of the first layer ({first_input_size}) does not match the base model's hidden size ({self.config.hidden_size})."
                     )
             else:
-                raise AttributeError("Base model configuration does not have a 'hidden_size' attribute.")    
+                raise AttributeError("Base model configuration does not have a 'hidden_size' attribute.")
 
 
     def _build_custom_stack(self, layer_configs: list[dict]) -> nn.Sequential:

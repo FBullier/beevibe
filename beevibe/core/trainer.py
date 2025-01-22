@@ -423,7 +423,7 @@ class BeeTrainer:
         elif isinstance(obj, list):
             return [self.__make_serializable(item) for item in obj]  # Process lists
         else:
-            return obj  # Leave other types unchanged    
+            return obj  # Leave other types unchanged
 
     def __train(
         self,

@@ -42,7 +42,7 @@ def test_predict(model):
     model.hftokenizer = MagicMock()
     model.hftokenizer.encode = MagicMock(return_value=(torch.randint(0, 100, (4, 16)), torch.ones((4, 16))))
     model._raw_predict = MagicMock(return_value=[[0.8, 0.2], [0.4, 0.6]])
-    
+
     raw_texts = ["Sample text 1", "Sample text 2"]
     predictions = model.predict(raw_texts)
     assert len(predictions) == len(raw_texts)
@@ -56,19 +56,19 @@ def test_forward_shape_mismatch(model):
 def test_forward_pass(model):
     model.base_model = MagicMock()
     model.base_model.return_value = (torch.rand((4, 16, 768)),)  # CLS token representations
-    
+
     input_ids = torch.randint(0, 100, (4, 16))
     attention_mask = torch.ones((4, 16))
     model.classifier = nn.Sequential(nn.Linear(768, model.num_labels))
-    
+
     output = model.forward(input_ids=input_ids, attention_mask=attention_mask)
     assert hasattr(output, "logits")
     assert output.logits.shape == (4, model.num_labels)
-    
+
     input_ids = torch.randint(0, 100, (4, 16))
     attention_mask = torch.ones((4, 16))
     model.classifier = nn.Sequential(nn.Linear(768, model.num_labels))
-    
+
     output = model.forward(input_ids=input_ids, attention_mask=attention_mask)
     assert hasattr(output, "logits")
     assert output.logits.shape == (4, model.num_labels)
@@ -77,11 +77,11 @@ def test_predict_multilabel(model):
     model.hftokenizer = MagicMock()
     model.hftokenizer.encode = MagicMock(return_value=(torch.randint(0, 100, (4, 16)), torch.ones((4, 16))))
     model._raw_predict = MagicMock(return_value=torch.tensor([[0.8, 0.2], [0.4, 0.6]]))
-    
+
     model.multilabel = True
     raw_texts = ["Sample text 1", "Sample text 2"]
     predictions = model.predict(raw_texts, return_probabilities=False, threshold=0.5)
-    
+
     assert len(predictions) == len(raw_texts)
     assert all(isinstance(pred, torch.Tensor) for pred in predictions)
 
@@ -136,10 +136,10 @@ def test_raw_predict(model):
             torch.tensor([[0.7, 0.3], [0.5, 0.5]])
         ]
     )
-    
+
     input_ids = torch.randint(0, 100, (4, 16))
     attention_mask = torch.ones((4, 16))
-    
+
     predictions = model._raw_predict(input_ids, attention_mask, batch_size=2)
     assert len(predictions) == 4  # Total predictions match input size
 
