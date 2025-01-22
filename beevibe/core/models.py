@@ -93,7 +93,82 @@ class BeeMLMClassifier(BeeBaseModel):
         self.base_model = AutoModel.from_pretrained(self.model_name, quantization_config=quantization_config)
         self.config = self.base_model.config
 
+        self.verify_layer_configs()
         self.classifier = self._build_custom_stack(self.layer_configs)
+
+    def verify_layer_configs(self):
+        """
+        Verifies the content of self.layer_configs to ensure it is valid before building the custom stack.
+
+        Raises:
+            ValueError: If any issue is found in the layer configurations.
+        """
+        if not isinstance(self.layer_configs, list):
+            raise ValueError("layer_configs must be a list of dictionaries.")
+
+        # Define allowed keys for the layer configurations
+        allowed_keys = {
+            "input_size",
+            "output_size",
+            "activation",
+            "dropout_rate",
+            "batch_norm",
+            "layer_norm",
+            "residual",
+        }
+
+        for i, config in enumerate(self.layer_configs):
+            if not isinstance(config, dict):
+                raise ValueError(f"Layer configuration at index {i} is not a dictionary.")
+
+            # Check for invalid keys
+            invalid_keys = set(config.keys()) - allowed_keys
+            if invalid_keys:
+                raise ValueError(f"Invalid keys {invalid_keys} found in layer configuration at index {i}.")
+
+            # Validate required keys
+            required_keys = ["input_size", "output_size"]
+            for key in required_keys:
+                if key not in config:
+                    raise ValueError(f"Missing required key '{key}' in layer configuration at index {i}.")
+                if not isinstance(config[key], int) or config[key] <= 0:
+                    raise ValueError(f"'{key}' in layer configuration at index {i} must be a positive integer.")
+
+            # Validate optional keys
+            if "activation" in config:
+                activation = config["activation"]
+                if activation is not None and not callable(activation):
+                    raise ValueError(f"'activation' in layer configuration at index {i} must be callable or None.")
+
+            if "dropout_rate" in config:
+                dropout_rate = config["dropout_rate"]
+                if not (isinstance(dropout_rate, (int, float)) and 0 <= dropout_rate <= 1):
+                    raise ValueError(f"'dropout_rate' in layer configuration at index {i} must be between 0 and 1.")
+
+            if "batch_norm" in config:
+                if not isinstance(config["batch_norm"], bool):
+                    raise ValueError(f"'batch_norm' in layer configuration at index {i} must be a boolean.")
+
+            if "layer_norm" in config:
+                if not isinstance(config["layer_norm"], bool):
+                    raise ValueError(f"'layer_norm' in layer configuration at index {i} must be a boolean.")
+
+            if "residual" in config:
+                if not isinstance(config["residual"], bool):
+                    raise ValueError(f"'residual' in layer configuration at index {i} must be a boolean.")
+
+        # Ensure that the input size of the first layer matches the base model's hidden size
+        if self.layer_configs:
+            if hasattr(self.config, "hidden_size"):
+                first_input_size = self.layer_configs[0]["input_size"]
+                if self.config.hidden_size != first_input_size:
+                    raise ValueError(
+                        f"Input size of the first layer ({first_input_size}) does not match the base model's hidden size ({self.config.hidden_size})."
+                    )
+            else:
+                raise AttributeError("Base model configuration does not have a 'hidden_size' attribute.")    
+
+
 
     def _build_custom_stack(self, layer_configs: list[dict]) -> nn.Sequential:
         """
