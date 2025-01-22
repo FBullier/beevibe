@@ -64,7 +64,7 @@ class BeeMLMClassifier(BeeBaseModel):
     A custom model for sequence classification with a flexible linear stack on top of a pretrained transformer.
     """
 
-    def __init__(self, model_name: str, num_labels: int, layer_configs: list[dict]):
+    def __init__(self, model_name: str, num_labels: int, layer_configs: list[dict]=None):
         """
         Initializes the CustomModel class.
 
@@ -93,7 +93,9 @@ class BeeMLMClassifier(BeeBaseModel):
         self.base_model = AutoModel.from_pretrained(self.model_name, quantization_config=quantization_config)
         self.config = self.base_model.config
 
-        self.verify_layer_configs()
+        if self.layer_configs:
+            self.verify_layer_configs()
+            
         self.classifier = self._build_custom_stack(self.layer_configs)
 
     def verify_layer_configs(self):

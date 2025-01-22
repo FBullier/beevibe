@@ -45,7 +45,7 @@ class BeeTrainer:
     """
     def __init__(
         self,
-        num_classes: int = 2,
+        num_classes: int = 0,
         classes_names: List[str] = [],
         model="camembert-base",
         optimizer_class=Adam,
@@ -150,10 +150,22 @@ class BeeTrainer:
         self.verbose = verbose
 
         if len(classes_names) == 0:
-            self.classes_names = [f"Class {i}" for i in range(num_classes)]
+            if isinstance(model, BeeBaseModel):
+                self.num_classes = model.num_labels
+            else:
+                if self.num_classes == 0:
+                    assert f"The number of classes is not define {self.num_classes}"
+
+            self.classes_names = [f"Class {i}" for i in range(self.num_classes)]
+
         else:
             self.classes_names = classes_names
             self.num_classes = len(classes_names)
+
+            if isinstance(model, BeeBaseModel):
+                if self.num_classes != model.num_labels:
+                    assert f"Number of classes is different between the trainer ({self.num_classes}) and the model ({model.num_labels})"
+
 
         if device is None:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
