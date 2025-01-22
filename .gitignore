@@ -174,3 +174,5 @@ cython_debug/
 examples/config.ini
 examples/lora_*/*.*
 examples/model_*/*.*
+examples/model-*/*.*
+examples/adaptater-*/*.*
