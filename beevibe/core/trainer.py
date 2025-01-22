@@ -938,6 +938,8 @@ class BeeTrainer:
             seed=seed
             )
 
+        start_time = time.time()
+
         self.__init_tokenizer()
 
         if train_size == 1.0:
@@ -974,6 +976,8 @@ class BeeTrainer:
         )
 
         ret = self.__make_serializable(ret)
+
+        self.__display_elapsed_time(start_time)
 
         return ret
 
@@ -1039,6 +1043,13 @@ class BeeTrainer:
 
         return train_texts, val_texts, train_labels, val_labels
 
+    def __display_elapsed_time(self, start_time):
+        elapsed_time = time.time() - start_time
+        hours = int(elapsed_time // 3600)
+        minutes = int((elapsed_time % 3600) // 60)
+        seconds = int(elapsed_time % 60)
+        self.logger_info(f"Elapsed time: {hours:02}:{minutes:02}:{seconds:02}")
+
     def holdout(
         self,
         texts: List[str],
@@ -1081,6 +1092,8 @@ class BeeTrainer:
             seed=seed
             )
 
+        start_time = time.time()
+
         self.__init_tokenizer()
 
         train_texts, val_texts, train_labels, val_labels = self.get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
@@ -1115,6 +1128,8 @@ class BeeTrainer:
         self.__print_metrics(ret)
 
         ret = self.__make_serializable(ret)
+
+        self.__display_elapsed_time(start_time)
 
         return ret
 
@@ -1159,6 +1174,8 @@ class BeeTrainer:
             min_delta=min_delta,
             seed=seed
             )
+
+        start_time = time.time()
 
         self.__init_tokenizer()
 
@@ -1273,6 +1290,8 @@ class BeeTrainer:
         all_rets = {"cv_folds":rets, "global_results":all_results}
 
         all_rets = self.__make_serializable(all_rets)
+
+        self.__display_elapsed_time(start_time)
 
         return all_rets
 

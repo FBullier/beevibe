@@ -107,11 +107,20 @@ class BeeMLMClassifier(BeeBaseModel):
         """
         layers = []
 
+        # Create a default classification head
         if not layer_configs:
-            layer_configs = [{"input_size": 768, "output_size": self.num_labels, "activation": None}]
+            if hasattr(self.config, "hidden_size"):
+                layer_configs = [{"input_size": self.config.hidden_size, "output_size": self.num_labels, "activation": None}]
+            else:
+                raise AttributeError("Can't create a default classification head beacause the base model configuration does not have a 'hidden_size' attribute.")
+        else:
+            # Check input size of classification head
+            if hasattr(self.config, "hidden_size"):
+                if self.config.hidden_size != layer_configs[0]["input_size"]:
+                    raise AttributeError(f"Input size of classification head does not match with the base model configuration 'hidden_size' attribute. {self.config.hidden_size} != {layer_configs[0]['input_size']}")
 
         # Get previous layer size, this should be 768 for common MLM
-        previous_size = layer_configs[0]["input_size"]  
+        previous_size = layer_configs[0]["input_size"]
 
         # Create a simple classifier if there is no layer_configs
 
