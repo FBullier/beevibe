@@ -151,7 +151,7 @@ class BeeTrainer:
 
         if len(classes_names) == 0:
             if isinstance(model, BeeBaseModel):
-                self.num_classes = model.num_labels
+                self.num_classes = model.num_classes
             else:
                 if self.num_classes == 0:
                     assert f"The number of classes is not define {self.num_classes}"
@@ -163,8 +163,8 @@ class BeeTrainer:
             self.num_classes = len(classes_names)
 
             if isinstance(model, BeeBaseModel):
-                if self.num_classes != model.num_labels:
-                    assert f"Number of classes is different between the trainer ({self.num_classes}) and the model ({model.num_labels})"
+                if self.num_classes != model.num_classes:
+                    assert f"Number of classes is different between the trainer ({self.num_classes}) and the model ({model.num_classes})"
 
         if device is None:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -321,7 +321,7 @@ class BeeTrainer:
         else :
             self.model = None
             self.model = HFMLMClassifier.from_pretrained(model_name=self.model_name,
-                                                                  num_labels=self.num_classes,
+                                                                  num_classes=self.num_classes,
                                                                     quantization_config=self.quantization_config)
 
         # Free GPU memory
