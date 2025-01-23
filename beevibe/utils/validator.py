@@ -8,7 +8,7 @@ class DatasetConfig(BaseModel):
     texts: Optional[List[str]] = None
     labels: Optional[List[Any]] = None
 
-    classes_names: Optional[Union[List[str], ndarray]] = None
+    labels_names: Optional[Union[List[str], ndarray]] = None
     lr: Optional[float] = 1e-5
     multilabel: Optional[bool] = False
     device: Optional[str] = "cpu"
@@ -17,7 +17,7 @@ class DatasetConfig(BaseModel):
     model_name: Optional[str] = None
     path: Optional[str] = None
 
-    num_classes: Optional[int] = None
+    num_labels: Optional[int] = None
     seed: Optional[int] = 1811
     num_epochs: Optional[int] = 20
     batch_size: Optional[int] = 4
@@ -52,8 +52,8 @@ class DatasetConfig(BaseModel):
                 raise TypeError(f"All elements in {info.field_name} must be strings.")
         return value
 
-    @field_validator("classes_names", mode="before")
-    def validate_classes_names(cls, value, info):
+    @field_validator("labels_names", mode="before")
+    def validate_labels_names(cls, value, info):
         """Validate the list or array of class names."""
         if value is not None:
             if not isinstance(value, list) and not isinstance(value, ndarray):
@@ -62,7 +62,7 @@ class DatasetConfig(BaseModel):
                 raise TypeError(f"All elements in {info.field_name} must be strings.")
         return value
 
-    @field_validator("seed", "num_classes", "num_epochs", "batch_size", "patience", "max_len", "n_splits", mode="before")
+    @field_validator("seed", "num_labels", "num_epochs", "batch_size", "patience", "max_len", "n_splits", mode="before")
     def validate_positive_integers(cls, value, info):
         """Validate integer fields to ensure they are positive and >= 0."""
         if value is not None:

@@ -45,8 +45,8 @@ class BeeTrainer:
     """
     def __init__(
         self,
-        num_classes: int = 0,
-        classes_names: List[str] = [],
+        num_labels: int = 0,
+        labels_names: List[str] = [],
         model="camembert-base",
         optimizer_class=Adam,
         scheduler_class=None,
@@ -72,8 +72,8 @@ class BeeTrainer:
         Initialize the MultiClassTrainer with the specified parameters.
 
         Args:
-            num_classes (int): Number of classes for classification.
-            classes_names (List[str]): Names of the classes. If empty, generates default names.
+            num_labels (int): Number of classes for classification.
+            labels_names (List[str]): Names of the classes. If empty, generates default names.
             model : model to use for training (str or Bee model class)
             optimizer_class : Optimizer class of the Model (default is Adam)
             scheduler_class : Scheduler class of the Model (default is ReduceLROnPlateau)
@@ -99,8 +99,8 @@ class BeeTrainer:
             verbose (bool): If True, enables verbose logging.
         """
 
-        _ = DatasetConfig(num_classes=num_classes,
-                          classes_names=classes_names,
+        _ = DatasetConfig(num_labels=num_labels,
+                          labels_names=labels_names,
                           max_len=max_len,
                           lr=lr,
                           multilabel=multilabel,
@@ -117,7 +117,7 @@ class BeeTrainer:
                           use_double_quant=False
                           )
 
-        self.num_classes = num_classes
+        self.num_labels = num_labels
         self.max_len = max_len
         self.lr = lr
         self.multilabel = multilabel
@@ -149,22 +149,22 @@ class BeeTrainer:
 
         self.verbose = verbose
 
-        if len(classes_names) == 0:
+        if len(labels_names) == 0:
             if isinstance(model, BeeBaseModel):
-                self.num_classes = model.num_classes
+                self.num_labels = model.num_labels
             else:
-                if self.num_classes == 0:
-                    assert f"The number of classes is not define {self.num_classes}"
+                if self.num_labels == 0:
+                    assert f"The number of classes is not define {self.num_labels}"
 
-            self.classes_names = [f"Class {i}" for i in range(self.num_classes)]
+            self.labels_names = [f"Class {i}" for i in range(self.num_labels)]
 
         else:
-            self.classes_names = classes_names
-            self.num_classes = len(classes_names)
+            self.labels_names = labels_names
+            self.num_labels = len(labels_names)
 
             if isinstance(model, BeeBaseModel):
-                if self.num_classes != model.num_classes:
-                    assert f"Number of classes is different between the trainer ({self.num_classes}) and the model ({model.num_classes})"
+                if self.num_labels != model.num_labels:
+                    assert f"Number of classes is different between the trainer ({self.num_labels}) and the model ({model.num_labels})"
 
         if device is None:
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -175,7 +175,7 @@ class BeeTrainer:
         if isinstance(model, BeeBaseModel):
             self.model = model
             self.model_name = self.model.model_name
-            self.model.classes_names = self.classes_names
+            self.model.labels_names = self.labels_names
             self.model.multilabel = self.multilabel
         elif isinstance(model, str):
             self.model_name = model
@@ -321,7 +321,7 @@ class BeeTrainer:
         else :
             self.model = None
             self.model = HFMLMClassifier.from_pretrained(model_name=self.model_name,
-                                                                  num_classes=self.num_classes,
+                                                                  num_labels=self.num_labels,
                                                                     quantization_config=self.quantization_config)
 
         # Free GPU memory
@@ -587,7 +587,7 @@ class BeeTrainer:
 
         ret = {
             "model_name": self.model_name,
-            "num_classes": self.num_classes,
+            "num_labels": self.num_labels,
             "max_len": self.max_len,
             "lr": self.lr,
             "device": self.device,
@@ -652,7 +652,7 @@ class BeeTrainer:
             # Confusion matrix per class (each label treated as binary classification)
             res["confusion_matrix"] = [
                 confusion_matrix(y_true[:, i], y_pred[:, i], labels=[0, 1])
-                for i in range(self.num_classes)
+                for i in range(self.num_labels)
             ]
 
         else:
@@ -708,7 +708,7 @@ class BeeTrainer:
         ]
         extracted_dict = {key: current_dict[key] for key in keys_to_extract}
 
-        class_labels = self.classes_names
+        class_labels = self.labels_names
         metrics = ["precision", "recall", "f1", "support"]
 
         # Définir les largeurs de colonnes fixes
@@ -868,26 +868,26 @@ class BeeTrainer:
 
         return val_loss, res_metrics, all_preds, all_labels
 
-    def compute_class_weights(self, labels: List[Any], num_classes: int) -> torch.Tensor:
+    def compute_class_weights(self, labels: List[Any], num_labels: int) -> torch.Tensor:
         """
         Compute class weights for balancing the loss function.
 
         Args:
             train_labels (List[Any]): Training labels.
-            num_classes (int): Number of classes.
+            num_labels (int): Number of classes.
 
         Returns:
             torch.Tensor: Tensor containing class weights.
         """
         _ = DatasetConfig(
             labels=labels,
-            num_classes=num_classes
+            num_labels=num_labels
             )
 
         if not self.multilabel:
             # Multi-class case
             class_weights = compute_class_weight(
-                class_weight="balanced", classes=np.arange(num_classes), y=labels
+                class_weight="balanced", classes=np.arange(num_labels), y=labels
             )
             return torch.tensor(class_weights, dtype=torch.float).to(self.device)
 
@@ -896,7 +896,7 @@ class BeeTrainer:
         num_samples = train_labels.shape[0]
         class_weights = []
 
-        for label_idx in range(num_classes):
+        for label_idx in range(num_labels):
             num_positives = np.sum(train_labels[:, label_idx])
             if num_positives > 0:
                 class_weight = num_samples / (2.0 * num_positives)
@@ -967,7 +967,7 @@ class BeeTrainer:
             )
 
         if balanced:
-            class_weights = self.compute_class_weights(train_labels, self.num_classes)
+            class_weights = self.compute_class_weights(train_labels, self.num_labels)
         else:
             class_weights = None
 
@@ -1111,7 +1111,7 @@ class BeeTrainer:
         train_texts, val_texts, train_labels, val_labels = self.get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
 
         if balanced:
-            class_weights = self.compute_class_weights(train_labels, self.num_classes)
+            class_weights = self.compute_class_weights(train_labels, self.num_labels)
         else:
             class_weights = None
 
@@ -1220,7 +1220,7 @@ class BeeTrainer:
 
             if balanced:
                 class_weights = self.compute_class_weights(
-                    train_labels, self.num_classes
+                    train_labels, self.num_labels
                 )
             else:
                 class_weights = None

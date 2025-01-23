@@ -64,19 +64,19 @@ class BeeMLMClassifier(BeeBaseModel):
     A custom model for sequence classification with a flexible linear stack on top of a pretrained transformer.
     """
 
-    def __init__(self, model_name: str, num_classes: int, layer_configs: list[dict]=None):
+    def __init__(self, model_name: str, num_labels: int, layer_configs: list[dict]=None):
         """
         Initializes the CustomModel class.
 
         Args:
             model_name (str): The name of the pretrained model.
-            num_classes (int): The number of labels for classification.
+            num_labels (int): The number of labels for classification.
             layer_configs (list of dict): Configuration for custom layers.
         """
         super(BeeMLMClassifier, self).__init__()
         self.model_name = model_name
-        self.num_classes = num_classes
-        self.classes_names = []
+        self.num_labels = num_labels
+        self.labels_names = []
         self.multilabel = None
         self.layer_configs = layer_configs
         self.return_probabilities = False
@@ -186,7 +186,7 @@ class BeeMLMClassifier(BeeBaseModel):
         # Create a default classification head
         if not layer_configs:
             if hasattr(self.config, "hidden_size"):
-                layer_configs = [{"input_size": self.config.hidden_size, "output_size": self.num_classes, "activation": None}]
+                layer_configs = [{"input_size": self.config.hidden_size, "output_size": self.num_labels, "activation": None}]
             else:
                 raise AttributeError("Can't create a default classification head beacause the base model configuration does not have a 'hidden_size' attribute.")
         else:
@@ -302,7 +302,7 @@ class BeeMLMClassifier(BeeBaseModel):
             AssertionError: If no tokenizer is found and cannot be loaded for the given model name.
 
         Example:
-            >>> model = BeeSimpleMaskModelForClassification(model_name="bert-base-uncased", num_classes=3)
+            >>> model = BeeSimpleMaskModelForClassification(model_name="bert-base-uncased", num_labels=3)
             >>> raw_texts = ["This is a positive example.", "This is a negative example."]
             >>> predictions = model.predict(raw_texts, batch_size=16)
             >>> print(predictions)
@@ -431,16 +431,16 @@ class BeeMLMClassifier(BeeBaseModel):
         save_file(weights, os.path.join(save_directory, "model.safetensors"))
 
         # Manage JSON serialization
-        if isinstance(self.classes_names, np.ndarray):
-            classes_names = self.classes_names.tolist()
+        if isinstance(self.labels_names, np.ndarray):
+            labels_names = self.labels_names.tolist()
         else:
-            classes_names = self.classes_names
+            labels_names = self.labels_names
 
         # jsonify layer_config
         config = {
             "model_name": self.model_name,
-            "num_classes": self.num_classes,
-            "classes_names": classes_names,
+            "num_labels": self.num_labels,
+            "labels_names": labels_names,
             "multilabel":self.multilabel,
             "head_layer_config": [
                 {k: (v.__name__ if k == "activation" and v else v) for k, v in layer.items() if not (k == "activation" and v is None)}
@@ -469,8 +469,8 @@ class BeeMLMClassifier(BeeBaseModel):
             config = json.load(f)
 
         model_name = config["model_name"]
-        num_classes = config["num_classes"]
-        classes_names = config["classes_names"]
+        num_labels = config["num_labels"]
+        labels_names = config["labels_names"]
         multilabel = config["multilabel"]
 
         #layer_configs = config["layer_configs"]
@@ -483,16 +483,16 @@ class BeeMLMClassifier(BeeBaseModel):
 
 
         # Manage JSON serialization
-        if isinstance(classes_names, list):
-            classes_names = np.array(classes_names)
+        if isinstance(labels_names, list):
+            labels_names = np.array(labels_names)
 
         # Initialize the model
-        model = cls(model_name=model_name, num_classes=num_classes, layer_configs=layer_configs)
+        model = cls(model_name=model_name, num_labels=num_labels, layer_configs=layer_configs)
 
         # Create model
         model.model_directory = save_directory
         model.multilabel = multilabel
-        model.classes_names = classes_names
+        model.labels_names = labels_names
         model.from_pretrained()  # Load the base model
 
         # Load the weights from safetensors
