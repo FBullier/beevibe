@@ -463,6 +463,7 @@ class BeeTrainer:
             patience (int): Early stopping patience.
             min_delta (float): Minimum improvement in validation loss to reset patience.
             seed (int): Random seed for reproducibility.
+            loss_treshold (float): Loss of train threshold below which training is stopped
 
         Returns:
             Dict[str, Any]: A dictionary containing training and validation metrics, losses, and other details.
