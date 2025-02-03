@@ -1307,6 +1307,7 @@ class BeeTrainer:
 
         return all_rets
 
+
     def release_model(self) -> None:
         """
         Release the model from memory and clear GPU cache.

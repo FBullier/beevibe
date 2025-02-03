@@ -12,6 +12,7 @@ from .core.tokenizers import HFTokenizer
 from .core.models import HFMLMClassifier
 from .core.models import BeeMLMClassifier
 from .core.schedulers import BeeAnnealOnPlateau
+from .utils.huggingface import HuggingFacehub
 
 # Package metadata
 __version__ = "0.1.0"
@@ -24,5 +25,6 @@ __all__ = [
     "HFTokenizer",
     "HFMLMClassifier",
     "BeeMLMClassifier",
-    "BeeAnnealOnPlateau"
+    "BeeAnnealOnPlateau",
+    "HuggingFacehub"
 ]
