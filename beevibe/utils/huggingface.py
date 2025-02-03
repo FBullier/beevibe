@@ -2,13 +2,13 @@ import os
 import configparser
 from huggingface_hub import snapshot_download, create_repo, upload_folder
 
-class HuggingFacehub:
+class HuggingFaceHub:
 
     def __init__(self):
         """
         Initializes the HFHub class.
         """
-        super(HuggingFacehub, self).__init__()
+        super(HuggingFaceHub, self).__init__()
 
     def load_hf_token(self, config_path: str = "config.ini") -> str:
         """
@@ -46,7 +46,7 @@ class HuggingFacehub:
         # Upload model
         upload_folder(folder_path=directory_path, repo_id=repo_id, commit_message="Upload model", token=token)
         
-        self.logger_info(f"Model uploaded to https://huggingface.co/{repo_id} (Private: {private})")
+        #self.logger_info(f"Model uploaded to https://huggingface.co/{repo_id} (Private: {private})")
 
 
     def load_from_hf_hub(self, directory_path: str, repo_name: str, token: str, organization: str = None):
@@ -57,4 +57,4 @@ class HuggingFacehub:
         # Download model
         snapshot_download(repo_id=repo_id, local_dir=directory_path, token=token)
         
-        self.logger_info(f"Model downloaded to {directory_path}")
+        #self.logger_info(f"Model downloaded to {directory_path}")
