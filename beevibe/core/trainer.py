@@ -450,6 +450,7 @@ class BeeTrainer:
         patience: int = 3,
         min_delta: float = 0.001,
         seed: int = 1811,
+        loss_treshold: float=0.0
     ) -> Dict[str, Any]:
         """
         Train the model using the provided training and validation data loaders.
@@ -569,6 +570,12 @@ class BeeTrainer:
                 self.logger_info(
                     f"Epoch {epoch}/{num_epochs-1}, Training Loss: {total_loss/len(train_loader):.4f}"
                 )
+
+                if total_loss/len(train_loader) < loss_treshold:
+                    self.logger_info(
+                        f"Training stopped because loss is under the threshold : Training Loss: {total_loss/len(train_loader):.4f} < {loss_treshold}"
+                    )
+                    break
 
             if self.scheduler_class:
                 if self.scheduler_needs_loss:
@@ -923,6 +930,7 @@ class BeeTrainer:
         patience: int = 3,
         min_delta: float = 0.001,
         seed: int = 1811,
+        loss_treshold: float=0.0
     ) -> Dict[str, Any]:
         """
         Train the model using the provided texts and labels.
@@ -937,6 +945,7 @@ class BeeTrainer:
             patience (int): Early stopping patience (default: 3).
             min_delta (float): Minimum improvement in validation loss to reset patience (default: 0.001).
             seed (int): Random seed for reproducibility (default: 1811).
+            loss_treshold (float): Loss of train threshold below which training is stopped
 
         Returns:
             Dict[str, Any]: Dictionary containing training results, including losses and metrics.
@@ -962,13 +971,8 @@ class BeeTrainer:
             train_texts = texts
             train_labels = labels
         else:
-            train_texts, val_texts, train_labels, val_labels = train_test_split(
-                texts,
-                labels,
-                test_size=(1.0 - train_size),
-                shuffle=True,
-                random_state=seed,
-            )
+            val_size = 1.0 - train_size
+            train_texts, _, train_labels, _ = self.get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
 
         if balanced:
             class_weights = self.compute_class_weights(train_labels, self.num_labels)
@@ -989,6 +993,7 @@ class BeeTrainer:
             min_delta=min_delta,
             class_weights=class_weights,
             seed=seed,
+            loss_treshold=loss_treshold
         )
 
         ret = self.__make_serializable(ret)
