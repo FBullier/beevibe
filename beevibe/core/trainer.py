@@ -1077,6 +1077,8 @@ class BeeTrainer:
         texts: List[str],
         labels: List[Any],
         val_size: float = 0.2,
+        val_texts: List[str] = None,
+        val_labels: List[Any] = None,
         num_epochs: int = 20,
         batch_size: int = 4,
         balanced: bool = False,
@@ -1118,7 +1120,11 @@ class BeeTrainer:
 
         self.__init_tokenizer()
 
-        train_texts, val_texts, train_labels, val_labels = self.get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
+        if val_texts is None:
+            self.logger_info("Holdout creates a {val_size} % validation texts and labels from train")
+            train_texts, val_texts, train_labels, val_labels = self.get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
+        else:
+            self.logger_info("Holdout uses the given validation texts and labels")
 
         if balanced:
             class_weights = self.compute_class_weights(train_labels, self.num_labels)
