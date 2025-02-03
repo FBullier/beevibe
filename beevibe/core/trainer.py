@@ -292,6 +292,10 @@ class BeeTrainer:
         for name, module in model.named_modules():
             if any(keyword in name for keyword in ["query", "key", "dense"]):
                 target_modules.append(name)
+
+        if len(target_modules) == 0:
+            target_modules="all-linear"
+
         return target_modules
 
 
