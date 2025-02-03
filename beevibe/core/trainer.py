@@ -1124,6 +1124,8 @@ class BeeTrainer:
             self.logger_info("Holdout creates a {val_size} % validation texts and labels from train")
             train_texts, val_texts, train_labels, val_labels = self.get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
         else:
+            train_texts = texts
+            train_labels = labels
             self.logger_info("Holdout uses the given validation texts and labels")
 
         if balanced:

@@ -187,6 +187,7 @@ class BeeMLMClassifier(BeeBaseModel):
         if not layer_configs:
             if hasattr(self.config, "hidden_size"):
                 layer_configs = [{"input_size": self.config.hidden_size, "output_size": self.num_labels, "activation": None}]
+                self.layer_configs = layer_configs
             else:
                 raise AttributeError("Can't create a default classification head beacause the base model configuration does not have a 'hidden_size' attribute.")
         else:
@@ -435,6 +436,8 @@ class BeeMLMClassifier(BeeBaseModel):
             labels_names = self.labels_names.tolist()
         else:
             labels_names = self.labels_names
+
+        print("layer_config", self.layer_configs)
 
         # jsonify layer_config
         config = {
