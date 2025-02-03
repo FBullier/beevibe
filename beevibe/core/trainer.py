@@ -574,7 +574,7 @@ class BeeTrainer:
 
                 if total_loss/len(train_loader) < loss_treshold:
                     self.logger_info(
-                        f"Training stopped because loss is under the threshold : Training Loss: {total_loss/len(train_loader):.4f} < {loss_treshold}"
+                        f"Training stopped, loss is under the threshold : {total_loss/len(train_loader):.4f} < {loss_treshold}"
                     )
                     break
 
