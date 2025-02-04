@@ -119,9 +119,23 @@ class BeeTrainer:
 
         self.num_labels = num_labels
         self.max_len = max_len
-        self.lr = lr
         self.multilabel = multilabel
         self.hftokenizer = None
+
+        # Manage the lr value for optimizer
+        self.lr = lr
+
+        if not isinstance(optimizer_params, dict):
+            optimizer_params = {}
+
+        if self.lr != 1e-5:
+            optimizer_params['lr'] = self.lr
+        else:
+            if optimizer_params.get('lr') is None:
+                optimizer_params['lr'] = self.lr
+            else:
+                self.lr=optimizer_params.get('lr')
+
 
         # Quantization paramaters
         if quantization_type is not None:
