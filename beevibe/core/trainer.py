@@ -969,8 +969,12 @@ class BeeTrainer:
         self.__init_tokenizer()
 
         if train_size == 1.0:
-            train_texts = texts
-            train_labels = labels
+            random.seed(seed)
+            combined = list(zip(texts, labels))
+            random.shuffle(combined)
+            train_texts, train_labels = zip(*combined)
+            train_texts = train_texts.tolist()
+            train_labels = train_labels.tolist()
         else:
             val_size = 1.0 - train_size
             train_texts, _, train_labels, _ = self.get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
