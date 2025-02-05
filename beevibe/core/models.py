@@ -423,7 +423,10 @@ class BeeMLMClassifier(BeeBaseModel):
         """
         os.makedirs(save_directory, exist_ok=True)
 
-        # Collect weights
+        # Collect all weights
+        #weights = self.base_model.state_dict()  # Get all transformer weights
+        #weights.update({f"classifier.{k}": v for k, v in self.classifier.state_dict().items()})  # Add classifier weights
+
         weights = {}
         weights.update(self.base_model.state_dict())  # Add base model weights
         weights.update({f"classifier.{k}": v for k, v in self.classifier.state_dict().items()})  # Add classifier weights
@@ -436,8 +439,6 @@ class BeeMLMClassifier(BeeBaseModel):
             labels_names = self.labels_names.tolist()
         else:
             labels_names = self.labels_names
-
-        print("layer_config", self.layer_configs)
 
         # jsonify layer_config
         config = {
@@ -504,7 +505,7 @@ class BeeMLMClassifier(BeeBaseModel):
         classifier_weights = {k[len("classifier."):]: v for k, v in weights.items() if k.startswith("classifier.")}
 
         # Load the weights into the respective components
-        model.base_model.load_state_dict(base_model_weights, strict=True)
+        model.base_model.load_state_dict(base_model_weights, strict=False)
         model.classifier.load_state_dict(classifier_weights, strict=True)
 
         return model
