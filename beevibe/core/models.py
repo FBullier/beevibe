@@ -89,6 +89,17 @@ class BeeMLMClassifier(BeeBaseModel):
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     def from_pretrained(self, quantization_config: Optional[BitsAndBytesConfig] = None ):
+        """
+        Loads a pre-trained model from the Hugging Face model hub and initializes the model's configuration and custom layers.
+
+        Args:
+            quantization_config (Optional[BitsAndBytesConfig]): A configuration object for model quantization, 
+                                                                applied during model loading (default is None).
+
+        Returns:
+            None: This function does not return a value, but it updates the model (`self.base_model`), its configuration (`self.config`),
+                and initializes the custom classifier (`self.classifier`).
+        """
 
         self.base_model = AutoModel.from_pretrained(self.model_name, quantization_config=quantization_config)
         self.config = self.base_model.config
@@ -247,12 +258,16 @@ class BeeMLMClassifier(BeeBaseModel):
                 output_hidden_states: Optional[bool] = None,
                 return_dict: Optional[bool] = None):
         """
-        Forward pass for the model.
+        Perform a forward pass through the model.
 
         Args:
             input_ids (torch.Tensor): Input token IDs.
             attention_mask (torch.Tensor): Attention mask for input tokens.
             labels (torch.Tensor, optional): Labels for classification. Default is None.
+            inputs_embeds (torch.FloatTensor, optional): Precomputed token embeddings instead of input IDs. Default is None.
+            output_attentions (bool, optional): Whether to return attention weights. Default is None (i.e., no attention output).
+            output_hidden_states (bool, optional): Whether to return hidden states from the model. Default is None (i.e., no hidden states).
+            return_dict (bool, optional): Whether to return the output as a dictionary (True) or as a tuple (False). Default is None.
 
         Returns:
             transformers.modeling_outputs.SequenceClassifierOutput: Output containing logits.
@@ -334,7 +349,17 @@ class BeeMLMClassifier(BeeBaseModel):
         return ret
 
     def process_batch(self, batch_input_ids, batch_attention_mask):
-        """Process a single batch and return predictions or probabilities."""
+        """
+            Process a single batch of input data and return probabilities.
+        Args:
+            batch_input_ids (torch.Tensor): Tensor containing a batch of input token IDs.
+            batch_attention_mask (torch.Tensor): Tensor containing the attention mask for the input tokens in the batch.
+
+        Returns:
+            torch.Tensor: The model's output for the given batch, which may include either raw logits or probabilities 
+                        depending on how the model is configured (e.g., classification logits or probabilities).
+
+        """
         with torch.no_grad():  # Disable gradient computation
             # Ensure inputs are on the same device as the model
             batch_input_ids = batch_input_ids.to(next(self.parameters()).device)
@@ -371,6 +396,7 @@ class BeeMLMClassifier(BeeBaseModel):
             batch_size (int): Number of samples to process per batch.
             num_workers (int): Number of parallel processes to use.
             threshold (float): Threshold for binary predictions in multi-label classification.
+            device (optional): The device (CPU or GPU) to run the prediction on. Defaults to None, which uses the current device.
 
         Returns:
             list: Predicted class labels, probabilities, or binary predictions for multi-label classification.
