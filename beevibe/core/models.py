@@ -468,7 +468,6 @@ class BeeMLMClassifier(BeeBaseModel):
             BeeCustomMaskModelForClassification: The loaded model.
         """
         # Load the configuration
-        #config = torch.load(os.path.join(save_directory, "config.pth"), weights_only=True)
         with open(os.path.join(save_directory, "config.json"), "r") as f:
             config = json.load(f)
 
