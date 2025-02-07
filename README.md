@@ -55,7 +55,7 @@ from Beevibe import BeeMLMClassifier, BeeTrainer
 import torch.nn as nn
 
 # Define classification head
-head_layer_configs = [
+head_layers = [
         {"input_size": 768, "output_size": 512, "activation": nn.ReLU, "batch_norm": True},
         {"input_size": 512, "output_size": 256, "activation": nn.ReLU, "layer_norm": True},
         {"input_size": 256, "output_size": num_classes, "activation": None},
@@ -65,7 +65,7 @@ head_layer_configs = [
 bee_mlm_model = BeeMLMClassifier(
     model_name = "camembert-base",
     num_labels = 5,
-    layer_configs=head_layer_configs
+    head_layers=head_layers
 )
 
 # Initialize the trainer

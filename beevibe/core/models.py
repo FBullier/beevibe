@@ -64,21 +64,21 @@ class BeeMLMClassifier(BeeBaseModel):
     A custom model for sequence classification with a flexible linear stack on top of a pretrained transformer.
     """
 
-    def __init__(self, model_name: str, num_labels: int, head_layer_configs: list[dict]=None):
+    def __init__(self, model_name: str, num_labels: int, head_layers: list[dict]=None):
         """
         Initializes the CustomModel class.
 
         Args:
             model_name (str): The name of the pretrained model.
             num_labels (int): The number of labels for classification.
-            layer_configs (list of dict): Configuration for custom layers.
+            head_layers (list of dict): Configuration for custom layers.
         """
         super(BeeMLMClassifier, self).__init__()
         self.model_name = model_name
         self.num_labels = num_labels
         self.labels_names = []
         self.multilabel = None
-        self.head_layers_config = head_layer_configs
+        self.head_layers = head_layers
         self.return_probabilities = False
 
         self.hftokenizer = None
@@ -93,20 +93,20 @@ class BeeMLMClassifier(BeeBaseModel):
         self.base_model = AutoModel.from_pretrained(self.model_name, quantization_config=quantization_config)
         self.config = self.base_model.config
 
-        if self.head_layers_config:
+        if self.head_layers:
             self.verify_layer_configs()
             
-        self.classifier = self._build_custom_stack(self.head_layers_config)
+        self.classifier = self._build_custom_stack(self.head_layers)
 
     def verify_layer_configs(self):
         """
-        Verifies the content of self.head_layers_config to ensure it is valid before building the custom stack.
+        Verifies the content of self.head_layers to ensure it is valid before building the custom stack.
 
         Raises:
             ValueError: If any issue is found in the layer configurations.
         """
-        if not isinstance(self.head_layers_config, list):
-            raise ValueError("layer_configs must be a list of dictionaries.")
+        if not isinstance(self.head_layers, list):
+            raise ValueError("head_layers must be a list of dictionaries.")
 
         # Define allowed keys for the layer configurations
         allowed_keys = {
@@ -119,7 +119,7 @@ class BeeMLMClassifier(BeeBaseModel):
             "residual",
         }
 
-        for i, config in enumerate(self.head_layers_config):
+        for i, config in enumerate(self.head_layers):
             if not isinstance(config, dict):
                 raise ValueError(f"Layer configuration at index {i} is not a dictionary.")
 
@@ -160,9 +160,9 @@ class BeeMLMClassifier(BeeBaseModel):
                     raise ValueError(f"'residual' in layer configuration at index {i} must be a boolean.")
 
         # Ensure that the input size of the first layer matches the base model's hidden size
-        if self.head_layers_config:
+        if self.head_layers:
             if hasattr(self.config, "hidden_size"):
-                first_input_size = self.head_layers_config[0]["input_size"]
+                first_input_size = self.head_layers[0]["input_size"]
                 if self.config.hidden_size != first_input_size:
                     raise ValueError(
                         f"Input size of the first layer ({first_input_size}) does not match the base model's hidden size ({self.config.hidden_size})."
@@ -171,12 +171,12 @@ class BeeMLMClassifier(BeeBaseModel):
                 raise AttributeError("Base model configuration does not have a 'hidden_size' attribute.")
 
 
-    def _build_custom_stack(self, layer_configs: list[dict]) -> nn.Sequential:
+    def _build_custom_stack(self, head_layers: list[dict]) -> nn.Sequential:
         """
         Builds a custom stack of layers based on the given configurations.
 
         Args:
-            layer_configs (list of dict): Configuration for each layer.
+            head_layers (list of dict): Configuration for each layer.
 
         Returns:
             nn.Sequential: A stack of custom layers.
@@ -184,24 +184,24 @@ class BeeMLMClassifier(BeeBaseModel):
         layers = []
 
         # Create a default classification head
-        if not layer_configs:
+        if not head_layers:
             if hasattr(self.config, "hidden_size"):
-                layer_configs = [{"input_size": self.config.hidden_size, "output_size": self.num_labels, "activation": None}]
-                self.head_layers_config = layer_configs
+                head_layers = [{"input_size": self.config.hidden_size, "output_size": self.num_labels, "activation": None}]
+                self.head_layers = head_layers
             else:
                 raise AttributeError("Can't create a default classification head beacause the base model configuration does not have a 'hidden_size' attribute.")
         else:
             # Check input size of classification head
             if hasattr(self.config, "hidden_size"):
-                if self.config.hidden_size != layer_configs[0]["input_size"]:
+                if self.config.hidden_size != head_layers[0]["input_size"]:
                     raise AttributeError(f"Input size of classification head does not match with the base model configuration 'hidden_size' attribute. {self.config.hidden_size} != {layer_configs[0]['input_size']}")
 
         # Get previous layer size, this should be 768 for common MLM
-        previous_size = layer_configs[0]["input_size"]
+        previous_size = head_layers[0]["input_size"]
 
-        # Create a simple classifier if there is no layer_configs
+        # Create a simple classifier if there is no head_layers
 
-        for config in layer_configs:
+        for config in head_layers:
             output_size = config["output_size"]
             activation = config.get("activation")
             dropout_rate = config.get("dropout_rate")
@@ -440,15 +440,15 @@ class BeeMLMClassifier(BeeBaseModel):
         else:
             labels_names = self.labels_names
 
-        # jsonify layer_config
+        # jsonify head_layers
         config = {
             "model_name": self.model_name,
             "num_labels": self.num_labels,
             "labels_names": labels_names,
             "multilabel":self.multilabel,
-            "head_layers_config": [
+            "head_layers": [
                 {k: (v.__name__ if k == "activation" and v else v) for k, v in layer.items() if not (k == "activation" and v is None)}
-                for layer in self.head_layers_config
+                for layer in self.head_layers
             ],
         }
 
@@ -477,9 +477,9 @@ class BeeMLMClassifier(BeeBaseModel):
         labels_names = config["labels_names"]
         multilabel = config["multilabel"]
 
-        head_layers_config = [
+        head_layers = [
            {k: (getattr(nn, v) if k == "activation" and v else v) for k, v in layer.items() if not (k == "activation" and v is None)}
-            for layer in config.get("head_layers_config")
+            for layer in config.get("head_layers")
            ]
 
 
@@ -488,7 +488,7 @@ class BeeMLMClassifier(BeeBaseModel):
             labels_names = np.array(labels_names)
 
         # Initialize the model
-        model = cls(model_name=model_name, num_labels=num_labels, head_layers_config=head_layers_config)
+        model = cls(model_name=model_name, num_labels=num_labels, head_layers=head_layers)
 
         # Create model
         model.model_directory = save_directory
