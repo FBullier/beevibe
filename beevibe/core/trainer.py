@@ -269,11 +269,12 @@ class BeeTrainer:
         Default function to create an Adam optimizer.
 
         Args:
+            optimizer_class (torch.optim.Optimizer): The class of the optimizer to be created (e.g., Adam, SGD).
             model (nn.Module): The model for which to create the optimizer.
             **params: Additional parameters for the optimizer.
 
         Returns:
-            torch.optim.Optimizer: An Adam optimizer.
+            torch.optim.Optimizer: An instance of the specified optimizer
         """
         self.logger_info("Use optimizer : " + optimizer_class.__name__)
         self.logger_info(f" - {params}")
@@ -288,11 +289,12 @@ class BeeTrainer:
         Default function to create a learning rate scheduler.
 
         Args:
+            scheduler_class (torch.optim.lr_scheduler._LRScheduler): The class of the learning rate scheduler to be created
             optimizer (torch.optim.Optimizer): The optimizer for which to create the scheduler.
             **params: Additional parameters for the scheduler.
 
         Returns:
-            Any: A ReduceLROnPlateau scheduler.
+            Any: An instance of the specified learning rate scheduler
         """
         self.logger_info("Use scheduler : " + scheduler_class.__name__)
         self.logger_info(f" - {params}")
@@ -302,6 +304,9 @@ class BeeTrainer:
 
 
     def __find_target_modules(self, model):
+        """
+        Identifies and returns the names of specific target modules in the model based on keyword matching.
+        """
         target_modules = []
         for name, module in model.named_modules():
             if any(keyword in name for keyword in ["query", "key", "dense"]):
@@ -315,7 +320,7 @@ class BeeTrainer:
 
     def __print_trainable_parameters(self, model):
         """
-        Prints the number of trainable parameters in the model.
+        Prints the number and % of trainable parameters in the model.
         """
         trainable_params = 0
         all_param = 0
@@ -440,6 +445,9 @@ class BeeTrainer:
         torch.manual_seed(seed)
 
     def __make_serializable(self, obj):
+        """
+        Recursively converts a given object into a serializable format. 
+        """
         if isinstance(obj, torch.Tensor):
             return obj.tolist()  # Convert PyTorch tensor to list
         elif isinstance(obj, np.ndarray):
@@ -1029,6 +1037,7 @@ class BeeTrainer:
             path (str): Directory path where the model and tokenizer will be saved.
         """
 
+        # TODO
         #_ = DatasetConfig(
         #    path=path
         #    )
@@ -1076,6 +1085,22 @@ class BeeTrainer:
             labels: List[Any],
             val_size: float = 0.2,
             seed: int = 1811,):
+        """
+        Split the dataset into training and validation sets using a holdout method.
+
+        Args:
+            texts (List[str]): A list of input texts to be used for training and validation.
+            labels (List[Any]): A list of labels corresponding to the input texts.
+            val_size (float): The proportion of the data to be used for validation (default is 0.2).
+            seed (int): The random seed for reproducibility of the split (default is 1811).
+
+        Returns:
+            Tuple[List[str], List[str], List[Any], List[Any]]:
+                - train_texts: A list of texts for the training set.
+                - val_texts: A list of texts for the validation set.
+                - train_labels: A list of labels corresponding to the training set.
+                - val_labels: A list of labels corresponding to the validation set.
+        """
 
         train_texts, val_texts, train_labels, val_labels = train_test_split(
             texts, labels, test_size=val_size, shuffle=True, random_state=seed
@@ -1084,6 +1109,16 @@ class BeeTrainer:
         return train_texts, val_texts, train_labels, val_labels
 
     def __display_elapsed_time(self, start_time):
+        """
+        Calculates and displays the elapsed time since a given start time.
+
+        Args:
+            start_time (float): The start time (usually returned by `time.time()`), 
+                                representing the time at which the event began.
+
+        Returns:
+            None: This method logs the formatted elapsed time but does not return any value.
+        """        
         elapsed_time = time.time() - start_time
         hours = int(elapsed_time // 3600)
         minutes = int((elapsed_time % 3600) // 60)
@@ -1111,6 +1146,8 @@ class BeeTrainer:
             texts (List[str]): List of input text samples.
             labels (List[Any]): Corresponding labels for the input texts.
             val_size (float): Proportion of data to use for validation (default: 0.2).
+            val_texts (List[str], optional): Predefined validation text samples. If None, the data will be split.
+            val_labels (List[Any], optional): Predefined validation labels. If None, the data will be split.
             num_epochs (int): Number of training epochs (default: 20).
             batch_size (int): Batch size for training (default: 4).
             balanced (bool): Whether to compute class weights for balancing (default: False).
