@@ -930,7 +930,7 @@ class BeeTrainer:
                 class_weight = 0.0
             class_weights.append(class_weight)
 
-        self.logger_info(f"class_weights: {class_weights}")
+        #self.logger_info(f"class_weights: {class_weights}")
 
         return torch.tensor(class_weights, dtype=torch.float).to(self.device)
 
