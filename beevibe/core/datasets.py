@@ -9,6 +9,7 @@ class BeeTextDataset(Dataset):
         texts (list of str): The list of text samples.
         labels (list of int): The list of corresponding labels.
         hftokenizer (bee.models.HFTokenizer): Tokenizer to preprocess the text samples.
+        ultilabel (Bool): Multi-label classification ? True/False
     """
 
     def __init__(self, texts: list[str], labels: list[int], hftokenizer, multilabel):

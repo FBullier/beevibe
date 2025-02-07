@@ -10,6 +10,7 @@ class HuggingFaceHub:
         """
         super(HuggingFaceHub, self).__init__()
 
+
     def load_hf_token(self, config_path: str = "config.ini") -> str:
         """
         Loads the Hugging Face API token from a .ini configuration file.
@@ -45,8 +46,6 @@ class HuggingFaceHub:
         
         # Upload model
         upload_folder(folder_path=directory_path, repo_id=repo_id, commit_message="Upload model", token=token)
-        
-        #self.logger_info(f"Model uploaded to https://huggingface.co/{repo_id} (Private: {private})")
 
 
     def load_from_hf_hub(self, directory_path: str, repo_name: str, token: str, organization: str = None):
@@ -57,4 +56,3 @@ class HuggingFaceHub:
         # Download model
         snapshot_download(repo_id=repo_id, local_dir=directory_path, token=token)
         
-        #self.logger_info(f"Model downloaded to {directory_path}")

@@ -128,7 +128,3 @@ class DatasetConfig(BaseModel):
         return values
 
     model_config = ConfigDict(extra="ignore", arbitrary_types_allowed=True)
-
-    #class Config:
-    #    extra = "ignore"  # Ignore fields that are not explicitly declared
-    #    arbitrary_types_allowed = True

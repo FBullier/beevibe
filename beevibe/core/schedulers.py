@@ -2,7 +2,7 @@ import torch
 
 class BeeAnnealOnPlateau:
     """
-    Implements a learning rate scheduler that reduces the learning rate when a metric has stopped improving.
+    Implements a custom learning rate scheduler that reduces the learning rate when a metric has stopped improving.
 
     Attributes:
         optimizer (torch.optim.Optimizer): Wrapped optimizer.
