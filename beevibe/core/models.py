@@ -12,6 +12,7 @@ from multiprocessing import cpu_count
 import transformers
 
 from beevibe.core.tokenizers import HFTokenizer
+from beevibe.utils.validator import DatasetConfig
 
 from typing import Optional, List
 
@@ -74,6 +75,11 @@ class BeeMLMClassifier(BeeBaseModel):
             head_layers (list of dict): Configuration for custom layers.
         """
         super(BeeMLMClassifier, self).__init__()
+
+        _ = DatasetConfig(model_name=model_name,
+                          num_labels=num_labels,
+                          )
+
         self.model_name = model_name
         self.num_labels = num_labels
         self.labels_names = []
@@ -105,11 +111,11 @@ class BeeMLMClassifier(BeeBaseModel):
         self.config = self.base_model.config
 
         if self.head_layers:
-            self.verify_layer_configs()
+            self._verify_layer_configs()
             
         self.classifier = self._build_custom_stack(self.head_layers)
 
-    def verify_layer_configs(self):
+    def _verify_layer_configs(self):
         """
         Verifies the content of self.head_layers to ensure it is valid before building the custom stack.
 
@@ -329,6 +335,14 @@ class BeeMLMClassifier(BeeBaseModel):
             [[0.8, 0.1, 0.1], [0.2, 0.7, 0.1]]
         """
 
+        _ = DatasetConfig(raw_texts=raw_texts,
+                          return_probabilities=return_probabilities,
+                          batch_size=batch_size,
+                          num_workers=num_workers,
+                          threshold=threshold,
+                          device=device
+                          )
+
         # Get/Load the tokenizer
         if hftokenizer is None:
             if self.hftokenizer is None:
@@ -348,7 +362,7 @@ class BeeMLMClassifier(BeeBaseModel):
 
         return ret
 
-    def process_batch(self, batch_input_ids, batch_attention_mask):
+    def _process_batch(self, batch_input_ids, batch_attention_mask):
         """
             Process a single batch of input data and return probabilities.
         Args:
@@ -434,7 +448,7 @@ class BeeMLMClassifier(BeeBaseModel):
         for batch_input_ids, batch_attention_mask in dataloader:
             batch_input_ids = batch_input_ids.to(device)  # Ensure the batch is on the correct device
             batch_attention_mask = batch_attention_mask.to(device)  # Ensure the batch is on the correct device
-            results.append(self.process_batch(batch_input_ids, batch_attention_mask))
+            results.append(self._process_batch(batch_input_ids, batch_attention_mask))
 
         # Concatenate all results
         return torch.cat(results, dim=0).tolist()

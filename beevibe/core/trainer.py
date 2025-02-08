@@ -264,7 +264,7 @@ class BeeTrainer:
             self.logger.info(message)
 
 
-    def optimizer_creator(self, optimizer_class, model: nn.Module, **params: Any) -> torch.optim.Optimizer:
+    def __optimizer_creator(self, optimizer_class, model: nn.Module, **params: Any) -> torch.optim.Optimizer:
         """
         Default function to create an Adam optimizer.
 
@@ -284,7 +284,7 @@ class BeeTrainer:
         return optimizer_class(**params)
 
 
-    def scheduler_creator(self, scheduler_class, optimizer: torch.optim.Optimizer, **params: Any) -> Any:
+    def __scheduler_creator(self, scheduler_class, optimizer: torch.optim.Optimizer, **params: Any) -> Any:
         """
         Default function to create a learning rate scheduler.
 
@@ -388,11 +388,11 @@ class BeeTrainer:
             self.__print_trainable_parameters(self.model)
 
         # Plug Optimizer function
-        self.optimizer = self.optimizer_creator(self.optimizer_class, self.model, **self.optimizer_params)
+        self.optimizer = self.__optimizer_creator(self.optimizer_class, self.model, **self.optimizer_params)
 
         # Plug Scheduler function
         if self.scheduler_class:
-            self.scheduler = self.scheduler_creator(self.scheduler_class, self.optimizer, **self.scheduler_params)
+            self.scheduler = self.__scheduler_creator(self.scheduler_class, self.optimizer, **self.scheduler_params)
         else:
             self.logger_info("No scheduler used")
             self.scheduler = None
@@ -472,7 +472,7 @@ class BeeTrainer:
         patience: int = 3,
         min_delta: float = 0.001,
         seed: int = 1811,
-        loss_treshold: float=0.0
+        loss_threshold: float=0.0
     ) -> Dict[str, Any]:
         """
         Train the model using the provided training and validation data loaders.
@@ -485,7 +485,7 @@ class BeeTrainer:
             patience (int): Early stopping patience.
             min_delta (float): Minimum improvement in validation loss to reset patience.
             seed (int): Random seed for reproducibility.
-            loss_treshold (float): Loss of train threshold below which training is stopped
+            loss_threshold (float): Loss of train threshold below which training is stopped
 
         Returns:
             Dict[str, Any]: A dictionary containing training and validation metrics, losses, and other details.
@@ -594,9 +594,9 @@ class BeeTrainer:
                     f"Epoch {epoch}/{num_epochs-1}, Training Loss: {total_loss/len(train_loader):.4f}"
                 )
 
-                if total_loss/len(train_loader) < loss_treshold:
+                if total_loss/len(train_loader) < loss_threshold:
                     self.logger_info(
-                        f"Training stopped, loss is under the threshold : {total_loss/len(train_loader):.4f} < {loss_treshold}"
+                        f"Training stopped, loss is under the threshold : {total_loss/len(train_loader):.4f} < {loss_threshold}"
                     )
                     break
 
@@ -902,7 +902,7 @@ class BeeTrainer:
 
         return val_loss, res_metrics, all_preds, all_labels
 
-    def compute_class_weights(self, labels: List[Any], num_labels: int) -> torch.Tensor:
+    def __compute_class_weights(self, labels: List[Any], num_labels: int) -> torch.Tensor:
         """
         Compute class weights for balancing the loss function.
 
@@ -953,7 +953,7 @@ class BeeTrainer:
         patience: int = 3,
         min_delta: float = 0.001,
         seed: int = 1811,
-        loss_treshold: float=0.0
+        loss_threshold: float=0.0
     ) -> Dict[str, Any]:
         """
         Train the model using the provided texts and labels.
@@ -968,7 +968,7 @@ class BeeTrainer:
             patience (int): Early stopping patience (default: 3).
             min_delta (float): Minimum improvement in validation loss to reset patience (default: 0.001).
             seed (int): Random seed for reproducibility (default: 1811).
-            loss_treshold (float): Loss of train threshold below which training is stopped
+            loss_threshold (float): Loss of train threshold below which training is stopped
 
         Returns:
             Dict[str, Any]: Dictionary containing training results, including losses and metrics.
@@ -983,7 +983,8 @@ class BeeTrainer:
             balanced=balanced,
             patience=patience,
             min_delta=min_delta,
-            seed=seed
+            seed=seed,
+            loss_threshold=loss_threshold
             )
 
         start_time = time.time()
@@ -999,10 +1000,10 @@ class BeeTrainer:
             train_labels = list(train_labels)
         else:
             val_size = 1.0 - train_size
-            train_texts, _, train_labels, _ = self.get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
+            train_texts, _, train_labels, _ = self.__get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
 
         if balanced:
-            class_weights = self.compute_class_weights(train_labels, self.num_labels)
+            class_weights = self.__compute_class_weights(train_labels, self.num_labels)
         else:
             class_weights = None
 
@@ -1020,7 +1021,7 @@ class BeeTrainer:
             min_delta=min_delta,
             class_weights=class_weights,
             seed=seed,
-            loss_treshold=loss_treshold
+            loss_threshold=loss_threshold
         )
 
         ret = self.__make_serializable(ret)
@@ -1029,57 +1030,56 @@ class BeeTrainer:
 
         return ret
 
-    def save_model(self, path: str) -> None:
+    def save_model(self, save_path: str) -> None:
         """
         Save the trained model and tokenizer to the specified path.
 
         Args:
-            path (str): Directory path where the model and tokenizer will be saved.
+            save_path (str): Directory path where the model and tokenizer will be saved.
         """
 
-        # TODO
-        #_ = DatasetConfig(
-        #    path=path
-        #    )
+        _ = DatasetConfig(
+            save_path=save_path
+            )
 
         # Save tokenizer and configuration
-        self.hftokenizer.save_pretrained(path)
-        self.hftokenizer.save_config(path)
+        self.hftokenizer.save_pretrained(save_path)
+        self.hftokenizer.save_config(save_path)
 
         # Merge and save model with Lora
         if self.use_lora:
             merged_model = self.model.merge_and_unload()
             if isinstance(merged_model, BeeBaseModel):
-              merged_model.save_model_safetensors(path)
+              merged_model.save_model_safetensors(save_path)
             else:
-              merged_model.save_pretrained(path)
+              merged_model.save_pretrained(save_path)
         else:
             if isinstance(self.model, BeeBaseModel):
-              self.model.save_model_safetensors(path)
+              self.model.save_model_safetensors(save_path)
             else:
-              self.model.save_pretrained(path)
+              self.model.save_pretrained(save_path)
 
 
-    def save_adaptater(self, path: str) -> None:
+    def save_adaptater(self, save_path: str) -> None:
         """
-        Save the trained model and tokenizer to the specified path.
+        Save the trained model and tokenizer to the specified save_path.
 
         Args:
-            path (str): Directory path where the model and tokenizer will be saved.
+            save_path (str): Directory path where the model and tokenizer will be saved.
         """
 
-        #_ = DatasetConfig(
-        #    path=path
-        #    )
+        _ = DatasetConfig(
+            save_path=save_path
+            )
 
         if self.use_lora:
             peft_model = PeftModel(self.model, self.lora_config)
-            peft_model.save_pretrained(path)
+            peft_model.save_pretrained(save_path)
         else:
             self.logger_info("The adapter does not appear to be utilized during model training.")
 
 
-    def get_holdout_train_validation(
+    def __get_holdout_train_validation(
             self,
             texts: List[str],
             labels: List[Any],
@@ -1163,6 +1163,8 @@ class BeeTrainer:
             texts=texts,
             labels=labels,
             val_size=val_size,
+            val_texts=val_texts,
+            val_labels=val_labels,
             num_epochs=num_epochs,
             batch_size=batch_size,
             balanced=balanced,
@@ -1177,14 +1179,14 @@ class BeeTrainer:
 
         if val_texts is None:
             self.logger_info(f"Holdout creates a {val_size} % validation texts and labels from train")
-            train_texts, val_texts, train_labels, val_labels = self.get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
+            train_texts, val_texts, train_labels, val_labels = self.__get_holdout_train_validation(texts=texts,labels=labels,val_size=val_size,seed=seed)
         else:
             train_texts = texts
             train_labels = labels
             self.logger_info("Holdout uses the given validation texts and labels")
 
         if balanced:
-            class_weights = self.compute_class_weights(train_labels, self.num_labels)
+            class_weights = self.__compute_class_weights(train_labels, self.num_labels)
         else:
             class_weights = None
 
@@ -1292,7 +1294,7 @@ class BeeTrainer:
             val_labels = [labels[i] for i in shuffled_val_idx]
 
             if balanced:
-                class_weights = self.compute_class_weights(
+                class_weights = self.__compute_class_weights(
                     train_labels, self.num_labels
                 )
             else:
