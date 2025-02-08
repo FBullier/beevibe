@@ -4,7 +4,7 @@ from numpy import ndarray
 from pydantic import BaseModel, field_validator, model_validator, ConfigDict
 from typing import List, Any, Optional, Union
 
-class DatasetConfig(BaseModel):
+class ValidateParams(BaseModel):
 
     texts: Optional[List[str]] = None
     labels: Optional[List[Any]] = None

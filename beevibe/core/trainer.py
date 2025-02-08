@@ -26,7 +26,7 @@ from beevibe.core.models import HFMLMClassifier, BeeBaseModel
 from beevibe.core.tokenizers import HFTokenizer
 from beevibe.core.earlystopping import BeeEarlyStopping
 from beevibe.utils.logger import setup_logger
-from beevibe.utils.validator import DatasetConfig
+from beevibe.utils.validator import ValidateParams
 
 from typing import List, Optional, Tuple, Any, Dict
 
@@ -99,7 +99,7 @@ class BeeTrainer:
             verbose (bool): If True, enables verbose logging.
         """
 
-        _ = DatasetConfig(num_labels=num_labels,
+        _ = ValidateParams(num_labels=num_labels,
                           labels_names=labels_names,
                           max_len=max_len,
                           lr=lr,
@@ -436,7 +436,7 @@ class BeeTrainer:
             seed (int): The random seed value.
         """
 
-        _ = DatasetConfig(
+        _ = ValidateParams(
             seed=seed
             )
 
@@ -913,7 +913,7 @@ class BeeTrainer:
         Returns:
             torch.Tensor: Tensor containing class weights.
         """
-        _ = DatasetConfig(
+        _ = ValidateParams(
             labels=labels,
             num_labels=num_labels
             )
@@ -974,7 +974,7 @@ class BeeTrainer:
             Dict[str, Any]: Dictionary containing training results, including losses and metrics.
         """
 
-        _ = DatasetConfig(
+        _ = ValidateParams(
             texts=texts,
             labels=labels,
             train_size=train_size,
@@ -1038,7 +1038,7 @@ class BeeTrainer:
             save_path (str): Directory path where the model and tokenizer will be saved.
         """
 
-        _ = DatasetConfig(
+        _ = ValidateParams(
             save_path=save_path
             )
 
@@ -1068,7 +1068,7 @@ class BeeTrainer:
             save_path (str): Directory path where the model and tokenizer will be saved.
         """
 
-        _ = DatasetConfig(
+        _ = ValidateParams(
             save_path=save_path
             )
 
@@ -1159,7 +1159,7 @@ class BeeTrainer:
             Dict[str, Any]: Dictionary containing holdout validation results.
         """
 
-        _ = DatasetConfig(
+        _ = ValidateParams(
             texts=texts,
             labels=labels,
             val_size=val_size,
@@ -1250,7 +1250,7 @@ class BeeTrainer:
             List[Dict[str, Any]]: List of dictionaries containing cross-validation results for each fold.
         """
 
-        _ = DatasetConfig(
+        _ = ValidateParams(
             texts=texts,
             labels=labels,
             n_splits=n_splits,

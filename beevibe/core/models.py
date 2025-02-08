@@ -12,7 +12,7 @@ from multiprocessing import cpu_count
 import transformers
 
 from beevibe.core.tokenizers import HFTokenizer
-from beevibe.utils.validator import DatasetConfig
+from beevibe.utils.validator import ValidateParams
 
 from typing import Optional, List
 
@@ -76,7 +76,7 @@ class BeeMLMClassifier(BeeBaseModel):
         """
         super(BeeMLMClassifier, self).__init__()
 
-        _ = DatasetConfig(model_name=model_name,
+        _ = ValidateParams(model_name=model_name,
                           num_labels=num_labels,
                           )
 
@@ -335,7 +335,7 @@ class BeeMLMClassifier(BeeBaseModel):
             [[0.8, 0.1, 0.1], [0.2, 0.7, 0.1]]
         """
 
-        _ = DatasetConfig(raw_texts=raw_texts,
+        _ = ValidateParams(raw_texts=raw_texts,
                           return_probabilities=return_probabilities,
                           batch_size=batch_size,
                           num_workers=num_workers,
@@ -454,14 +454,19 @@ class BeeMLMClassifier(BeeBaseModel):
         return torch.cat(results, dim=0).tolist()
 
 
-    def save_model_safetensors(self, save_directory: str):
+    def save_model_safetensors(self, save_path: str):
         """
         Saves the model using safetensors format.
 
         Args:
             save_directory (str): The directory where the model will be saved.
         """
-        os.makedirs(save_directory, exist_ok=True)
+
+        _ = ValidateParams(
+            save_path=save_path
+            )
+
+        os.makedirs(save_path, exist_ok=True)
 
         # Collect all weights
         #weights = self.base_model.state_dict()  # Get all transformer weights
@@ -472,7 +477,7 @@ class BeeMLMClassifier(BeeBaseModel):
         weights.update({f"classifier.{k}": v for k, v in self.classifier.state_dict().items()})  # Add classifier weights
 
         # Save weights using safetensors
-        save_file(weights, os.path.join(save_directory, "model.safetensors"))
+        save_file(weights, os.path.join(save_path, "model.safetensors"))
 
         # Manage JSON serialization
         if isinstance(self.labels_names, np.ndarray):
@@ -493,11 +498,11 @@ class BeeMLMClassifier(BeeBaseModel):
         }
 
         # torch.save(config, os.path.join(save_directory, "config.pth"))
-        with open(os.path.join(save_directory, "config.json"), "w") as f:
+        with open(os.path.join(save_path, "config.json"), "w") as f:
             json.dump(config, f)
 
     @classmethod
-    def load_model_safetensors(cls, save_directory: str):
+    def load_model_safetensors(cls, path: str):
         """
         Loads the model from safetensors format.
 
@@ -507,8 +512,13 @@ class BeeMLMClassifier(BeeBaseModel):
         Returns:
             BeeCustomMaskModelForClassification: The loaded model.
         """
+
+        _ = ValidateParams(
+            path=path
+            )
+
         # Load the configuration
-        with open(os.path.join(save_directory, "config.json"), "r") as f:
+        with open(os.path.join(path, "config.json"), "r") as f:
             config = json.load(f)
 
         model_name = config["model_name"]
@@ -530,13 +540,13 @@ class BeeMLMClassifier(BeeBaseModel):
         model = cls(model_name=model_name, num_labels=num_labels, head_layers=head_layers)
 
         # Create model
-        model.model_directory = save_directory
+        model.model_directory = parth
         model.multilabel = multilabel
         model.labels_names = labels_names
         model.from_pretrained()  # Load the base model
 
         # Load the weights from safetensors
-        weights = load_file(os.path.join(save_directory, "model.safetensors"))
+        weights = load_file(os.path.join(path, "model.safetensors"))
         base_model_weights = {k: v for k, v in weights.items() if not k.startswith("classifier.")}
         classifier_weights = {k[len("classifier."):]: v for k, v in weights.items() if k.startswith("classifier.")}
 
