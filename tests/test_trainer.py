@@ -9,29 +9,34 @@ from beevibe import BeeMLMClassifier
 def model():
     model_name = "bert-base-uncased"
     num_labels = 3
-    layer_configs = [
+    head_layers = [
         {"input_size": 768, "output_size": 512, "activation": nn.ReLU, "dropout_rate": 0.1},
-        {"input_size": 512, "output_size": num_labels, "activation": None, "dropout_rate": None},
+        {"input_size": 512, "output_size": num_labels, "activation": None, "dropout_rate": 0.2},
     ]
-    return BeeMLMClassifier(model_name=model_name, num_labels=num_labels, layer_configs=layer_configs)
+    return BeeMLMClassifier(model_name=model_name, num_labels=num_labels, head_layers=head_layers)
 
 def test_init(model):
     assert model.model_name == "bert-base-uncased"
     assert model.num_labels == 3
-    assert model.layer_configs is not None
-    assert model.classes_names == []
+    assert model.head_layers is not None
+    assert model.labels_names == []
+
 
 def test_from_pretrained(model):
     with patch("transformers.AutoModel.from_pretrained", return_value=MagicMock()) as mock_from_pretrained:
+        mock_from_pretrained.return_value.config.hidden_size = 768  # Ensure valid hidden_size
         model.from_pretrained()
         mock_from_pretrained.assert_called_once_with(model.model_name, quantization_config=None)
         assert hasattr(model, "base_model")
         assert isinstance(model.classifier, nn.Sequential)
 
+
 def test_build_custom_stack(model):
-    stack = model._build_custom_stack(model.layer_configs)
+    model.config = MagicMock(hidden_size=768)  # Mock config to avoid AttributeError
+    stack = model._build_custom_stack(model.head_layers)
     assert isinstance(stack, nn.Sequential)
     assert len(stack) > 0
+
 
 def test_forward_attention_mask_validation(model):
     input_ids = torch.randint(0, 100, (4, 16))
@@ -85,13 +90,14 @@ def test_predict_multilabel(model):
     assert len(predictions) == len(raw_texts)
     assert all(isinstance(pred, torch.Tensor) for pred in predictions)
 
+
 def test_save_and_load_model(tmp_path, model):
-    # Mock base model
+    save_directory = str(tmp_path / "model_dir")  # Convert to string
+
+    # Mock base model to prevent AttributeError
     mock_base_model = MagicMock()
     mock_base_model.state_dict.return_value = {"dummy_key": torch.rand(1)}
-    mock_base_model.load_state_dict = MagicMock()  # Skip strict loading
-
-    model.base_model = mock_base_model
+    model.base_model = mock_base_model  # Ensure base_model is set
 
     # Mock classifier with state_dict matching the Sequential structure
     mock_classifier = MagicMock()
@@ -103,18 +109,17 @@ def test_save_and_load_model(tmp_path, model):
     }
     model.classifier = mock_classifier
 
-    # Mock valid layer_configs with serializable activations
-    model.layer_configs = [
+    # Mock valid head_layers with serializable activations
+    model.head_layers = [
         {"input_size": 768, "output_size": 512, "activation": nn.ReLU},
         {"input_size": 512, "output_size": 3, "activation": None},
     ]
 
-    save_directory = tmp_path / "model_dir"
-    model.save_model_safetensors(save_directory)
+    model.save_model_safetensors(save_directory)  # This should work now
 
     # Assert saved files exist
-    assert (save_directory / "model.safetensors").exists()
-    assert (save_directory / "config.json").exists()
+    assert (tmp_path / "model_dir" / "model.safetensors").exists()
+    assert (tmp_path / "model_dir" / "config.json").exists()
 
     # Load model
     with patch("transformers.BertModel.load_state_dict", MagicMock()) as mocked_load:
@@ -124,13 +129,15 @@ def test_save_and_load_model(tmp_path, model):
     # Validate loaded model attributes
     assert loaded_model.model_name == model.model_name
     assert loaded_model.num_labels == model.num_labels
-    assert loaded_model.layer_configs[0]["activation"] == nn.ReLU
+    assert loaded_model.head_layers[0]["activation"] == nn.ReLU
+
+
 
 def test_raw_predict(model):
     model.eval = MagicMock()
     model.to = MagicMock()
     model.device = "cpu"
-    model.process_batch = MagicMock(
+    model._process_batch = MagicMock(
         side_effect=[
             torch.tensor([[0.8, 0.2], [0.4, 0.6]]),
             torch.tensor([[0.7, 0.3], [0.5, 0.5]])
@@ -158,7 +165,7 @@ def test_process_batch(model):
     batch_attention_mask = torch.ones((4, 16))
 
     # Process batch
-    predictions = model.process_batch(batch_input_ids, batch_attention_mask)
+    predictions = model._process_batch(batch_input_ids, batch_attention_mask)
     assert predictions.shape == (4, model.num_labels)  # Check for the expected shape
 
 
