@@ -446,7 +446,7 @@ class BeeTrainer:
 
     def __make_serializable(self, obj):
         """
-        Recursively converts a given object into a serializable format. 
+        Recursively converts a given object into a serializable format.
         """
         if isinstance(obj, torch.Tensor):
             return obj.tolist()  # Convert PyTorch tensor to list
@@ -1113,12 +1113,12 @@ class BeeTrainer:
         Calculates and displays the elapsed time since a given start time.
 
         Args:
-            start_time (float): The start time (usually returned by `time.time()`), 
+            start_time (float): The start time (usually returned by `time.time()`),
                                 representing the time at which the event began.
 
         Returns:
             None: This method logs the formatted elapsed time but does not return any value.
-        """        
+        """
         elapsed_time = time.time() - start_time
         hours = int(elapsed_time // 3600)
         minutes = int((elapsed_time % 3600) // 60)

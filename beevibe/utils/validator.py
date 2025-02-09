@@ -10,7 +10,7 @@ class ValidateParams(BaseModel):
     labels: Optional[List[Any]] = None
     val_texts: Optional[List[str]] = None
     val_labels: Optional[List[Any]] = None
-    
+
     raw_texts: Optional[List[str]] = None
     return_probabilities: Optional[bool] = False
     num_workers: Optional[int] = None
@@ -115,7 +115,7 @@ class ValidateParams(BaseModel):
                 raise ValueError(f"{info.field_name} must be upper than 0.")
             if info.field_name == "threshold" and not (0.0 < value <= 0.1):
                 raise ValueError(f"{info.field_name} must be between 0 and 0.1.")
-            
+
         return value
 
     @field_validator("balanced", "multilabel", "verbose", "return_probabilities", mode="before")

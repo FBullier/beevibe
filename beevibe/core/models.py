@@ -99,7 +99,7 @@ class BeeMLMClassifier(BeeBaseModel):
         Loads a pre-trained model from the Hugging Face model hub and initializes the model's configuration and custom layers.
 
         Args:
-            quantization_config (Optional[BitsAndBytesConfig]): A configuration object for model quantization, 
+            quantization_config (Optional[BitsAndBytesConfig]): A configuration object for model quantization,
                                                                 applied during model loading (default is None).
 
         Returns:
@@ -112,7 +112,7 @@ class BeeMLMClassifier(BeeBaseModel):
 
         if self.head_layers:
             self._verify_layer_configs()
-            
+
         self.classifier = self._build_custom_stack(self.head_layers)
 
     def _verify_layer_configs(self):
@@ -211,7 +211,7 @@ class BeeMLMClassifier(BeeBaseModel):
             # Check input size of classification head
             if hasattr(self.config, "hidden_size"):
                 if self.config.hidden_size != head_layers[0]["input_size"]:
-                    raise AttributeError(f"Input size of classification head does not match with the base model configuration 'hidden_size' attribute. {self.config.hidden_size} != {layer_configs[0]['input_size']}")
+                    raise AttributeError(f"Input size of classification head does not match with the base model configuration 'hidden_size' attribute. {self.config.hidden_size} != {head_layers[0]['input_size']}")
 
         # Get previous layer size, this should be 768 for common MLM
         previous_size = head_layers[0]["input_size"]
@@ -370,7 +370,7 @@ class BeeMLMClassifier(BeeBaseModel):
             batch_attention_mask (torch.Tensor): Tensor containing the attention mask for the input tokens in the batch.
 
         Returns:
-            torch.Tensor: The model's output for the given batch, which may include either raw logits or probabilities 
+            torch.Tensor: The model's output for the given batch, which may include either raw logits or probabilities
                         depending on how the model is configured (e.g., classification logits or probabilities).
 
         """
@@ -540,7 +540,7 @@ class BeeMLMClassifier(BeeBaseModel):
         model = cls(model_name=model_name, num_labels=num_labels, head_layers=head_layers)
 
         # Create model
-        model.model_directory = parth
+        model.model_directory = path
         model.multilabel = multilabel
         model.labels_names = labels_names
         model.from_pretrained()  # Load the base model

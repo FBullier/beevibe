@@ -58,7 +58,7 @@ class HFTokenizer:
 
             Returns:
                 None: This method does not return any value, but saves the tokenizer to the specified path.
-            """        
+            """
         if self.tokenizer:
             self.tokenizer.save_pretrained(path)
         else:
