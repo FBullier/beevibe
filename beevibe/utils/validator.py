@@ -111,9 +111,9 @@ class ValidateParams(BaseModel):
                 raise ValueError(f"{info.field_name} must be between 0 and 0.1.")
             if info.field_name == "lr" and not (0.0 < value):
                 raise ValueError(f"{info.field_name} must be upper than 0.")
-            if info.field_name == "loss_threshold" and not (0.0 < value):
+            if info.field_name == "loss_threshold" and not (0.0 <= value):
                 raise ValueError(f"{info.field_name} must be upper than 0.")
-            if info.field_name == "threshold" and not (0.0 < value <= 0.1):
+            if info.field_name == "threshold" and not (0.0 < value <= 1.0):
                 raise ValueError(f"{info.field_name} must be between 0 and 0.1.")
 
         return value
