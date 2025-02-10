@@ -1271,7 +1271,7 @@ class BeeTrainer:
             self.logger_info("Use MultilabelStratifiedKFold")
             kf = MultilabelStratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
             all_labels = np.zeros((len(labels), self.num_labels))
-            all_preds = np.zeros((len(labels), self.num_labels))           
+            all_preds = np.zeros((len(labels), self.num_labels))
         else:
             self.logger_info("Use StratifiedKFold")
             kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
@@ -1363,10 +1363,10 @@ class BeeTrainer:
         self.logger_info(
             f" - Accuracy: {np.mean(fold_accuracies):.4f} ± {np.std(fold_accuracies):.4f}"
         )
-        
-        if self.multilabal == False:
+
+        if not self.multilabel:
             self.logger_info(f" - MCC: {np.mean(fold_mcc):.4f} ± {np.std(fold_mcc):.4f}")
-        
+
         self.logger_info(
             f" - F1-micro: {np.mean(fold_f1_micro):.4f} ± {np.std(fold_f1_micro):.4f}"
         )
@@ -1377,7 +1377,7 @@ class BeeTrainer:
         self.__print_metrics({"val_metrics": ret})
 
         # Aggregated CV folds and global results
-        if self.multilabel:        
+        if self.multilabel:
             all_results = {"min_best_epoch":np.min(fold_best_epoch),
                         "max_best_epoch":np.max(fold_best_epoch),
                         "mean_accuracy":np.mean(fold_accuracies),
