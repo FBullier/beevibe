@@ -1,7 +1,7 @@
 [project]
 name = "beevibe"
 version = "0.1.0"
-description = "A lightweight framework for training and deploying language models for thematic text classification. "
+description = "A lightweight framework for training and deploying language models for thematic text classification."
 authors = [
     { name = "François Bullier" }
 ]
