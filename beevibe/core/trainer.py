@@ -17,6 +17,7 @@ from sklearn.metrics import matthews_corrcoef
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
+from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -1266,7 +1267,12 @@ class BeeTrainer:
 
         self.__init_tokenizer()
 
-        kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        if self.multilabel:
+            self.logger_info("Use MultilabelStratifiedKFold")
+            kf = MultilabelStratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        else:
+            self.logger_info("Use StratifiedKFold")
+            kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
 
         fold_accuracies = []
         fold_mcc = []
