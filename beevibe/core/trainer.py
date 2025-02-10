@@ -1363,7 +1363,10 @@ class BeeTrainer:
         self.logger_info(
             f" - Accuracy: {np.mean(fold_accuracies):.4f} ± {np.std(fold_accuracies):.4f}"
         )
-        self.logger_info(f" - MCC: {np.mean(fold_mcc):.4f} ± {np.std(fold_mcc):.4f}")
+        
+        if self.multilabal == False:
+            self.logger_info(f" - MCC: {np.mean(fold_mcc):.4f} ± {np.std(fold_mcc):.4f}")
+        
         self.logger_info(
             f" - F1-micro: {np.mean(fold_f1_micro):.4f} ± {np.std(fold_f1_micro):.4f}"
         )
@@ -1374,17 +1377,28 @@ class BeeTrainer:
         self.__print_metrics({"val_metrics": ret})
 
         # Aggregated CV folds and global results
-        all_results = {"min_best_epoch":np.min(fold_best_epoch),
-                       "max_best_epoch":np.max(fold_best_epoch),
-                       "mean_accuracy":np.mean(fold_accuracies),
-                       "std_accuracy":np.std(fold_accuracies),
-                       "mean_f1_micro":np.mean(fold_f1_micro),
-                       "std_f1_micro":np.std(fold_f1_micro),
-                       "std_mcc":np.mean(fold_mcc),
-                       "mean_mcc":np.std(fold_mcc),
-                       "all_labels":all_labels.tolist(),
-                       "all_preds":all_preds.tolist()
-                       }
+        if self.multilabel:        
+            all_results = {"min_best_epoch":np.min(fold_best_epoch),
+                        "max_best_epoch":np.max(fold_best_epoch),
+                        "mean_accuracy":np.mean(fold_accuracies),
+                        "std_accuracy":np.std(fold_accuracies),
+                        "mean_f1_micro":np.mean(fold_f1_micro),
+                        "std_f1_micro":np.std(fold_f1_micro),
+                        "all_labels":all_labels.tolist(),
+                        "all_preds":all_preds.tolist()
+                        }
+        else:
+            all_results = {"min_best_epoch":np.min(fold_best_epoch),
+                        "max_best_epoch":np.max(fold_best_epoch),
+                        "mean_accuracy":np.mean(fold_accuracies),
+                        "std_accuracy":np.std(fold_accuracies),
+                        "mean_f1_micro":np.mean(fold_f1_micro),
+                        "std_f1_micro":np.std(fold_f1_micro),
+                        "std_mcc":np.mean(fold_mcc),
+                        "mean_mcc":np.std(fold_mcc),
+                        "all_labels":all_labels.tolist(),
+                        "all_preds":all_preds.tolist()
+                        }
 
         all_rets = {"cv_folds":rets, "global_results":all_results}
 
