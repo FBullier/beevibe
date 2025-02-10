@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="beevibe",
     version="0.1.0",
-    description="A lightweight framework for training and deploying language models for thematic text classification.",
+    description="A lightweight framework for training and deploying language models for thematic text classification. ",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     author="François Bullier",
