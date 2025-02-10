@@ -1270,18 +1270,19 @@ class BeeTrainer:
         if self.multilabel:
             self.logger_info("Use MultilabelStratifiedKFold")
             kf = MultilabelStratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+            all_labels = np.zeros((len(labels), self.num_labels))
+            all_preds = np.zeros((len(labels), self.num_labels))           
         else:
             self.logger_info("Use StratifiedKFold")
             kf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+            all_labels = np.zeros(len(labels))
+            all_preds = np.zeros(len(labels))
 
         fold_accuracies = []
         fold_mcc = []
         fold_f1_micro = []
         fold_best_epoch = []
         rets = []
-
-        all_labels = np.zeros(len(labels))
-        all_preds = np.zeros(len(labels))
 
         for fold, (train_idx, val_idx) in enumerate(kf.split(texts, labels)):
             self.logger_info("\n")
@@ -1338,11 +1339,16 @@ class BeeTrainer:
             val_mcc = current_dict.get("mcc")
             val_f1_micro = current_dict.get("f1_micro")
 
-            val_preds = ret["val_preds"][best_epoch]
-            val_labels = ret["val_labels"][best_epoch]
+            val_preds = np.array(ret["val_preds"][best_epoch])
+            val_labels = np.array(ret["val_labels"][best_epoch])
 
-            all_labels[shuffled_val_idx] = val_labels
-            all_preds[shuffled_val_idx] = val_preds
+            # Correct assignment for multi-label vs other types
+            if self.multilabel :
+                all_labels[shuffled_val_idx, :] = val_labels
+                all_preds[shuffled_val_idx, :] = val_preds
+            else:
+                all_labels[shuffled_val_idx] = val_labels
+                all_preds[shuffled_val_idx] = val_preds
 
             fold_best_epoch.append(best_epoch)
             fold_accuracies.append(val_accuracy)
